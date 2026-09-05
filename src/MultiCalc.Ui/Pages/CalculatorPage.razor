@@ -1,0 +1,237 @@
+@page "/"
+@implements IDisposable
+@inject CalculatorState State
+@inject ToastService Toast
+@inject BackNavigation Back
+@inject NavigationManager Nav
+@inject IExternalBrowser Browser
+
+<div class="app">
+
+    <div class="topbar">
+        @* Tinted with the active calculator's colour, so which one is open reads at a
+           glance rather than by reading the name. *@
+        <button class="tabs-btn tinted" style="@State.Active.Tint.Style"
+                @onclick="() => Open(SheetKind.Instances)" aria-label="All calculators">
+            <Icon Name="layers" />
+            <span class="tabs-name">@State.Active.Name</span>
+            <span class="tabs-count">@State.Book.Sessions.Count</span>
+            <Icon Name="chevron-down" />
+        </button>
+
+        <button class="icon-btn" @onclick="() => Open(SheetKind.History)" aria-label="History">
+            <Icon Name="history" />
+        </button>
+
+        <button class="icon-btn" @onclick="() => Open(SheetKind.Menu)" aria-label="More">
+            <Icon Name="more" />
+        </button>
+    </div>
+
+    <div class="stage" @onpointerdown="StartSwipe" @onpointerup="EndSwipe" @onpointercancel="CancelSwipe">
+        <div class="expression @(State.Active.Draft.IsEmpty ? "is-placeholder" : string.Empty)">
+            <span class="expression-inner">@DisplayText</span>
+        </div>
+
+        <div class="result @(State.ErrorMessage is not null ? "is-error" : string.Empty)">
+            @ResultText
+        </div>
+    </div>
+
+    <div class="newrow">
+        <button class="newbtn newbtn-app" @onclick="AddInApp">
+            <Icon Name="calc-app" />
+            <span class="newbtn-text">
+                <span class="newbtn-title">In this app</span>
+                <span class="newbtn-note">Adds to your list</span>
+            </span>
+        </button>
+
+        <button class="newbtn newbtn-phone @(State.NativeStatus.CanSpawn ? string.Empty : "is-off")"
+                disabled="@(!State.NativeStatus.CanSpawn)"
+                @onclick="AddNative">
+            <Icon Name="calc-phone" />
+            <span class="newbtn-text">
+                <span class="newbtn-title">Phone calculator</span>
+                <span class="newbtn-note">@(State.NativeStatus.CanSpawn ? "Opens in Recents" : "Not on this phone")</span>
+            </span>
+        </button>
+    </div>
+
+    <Keypad Draft="State.Active.Draft" OnKey="State.Press" OnEquals="State.Evaluate" />
+
+</div>
+
+@switch (sheet)
+{
+    case SheetKind.Instances:
+        <InstanceSheet State="State" OnClose="CloseSheet" />
+        break;
+
+    case SheetKind.History:
+        <HistorySheet Session="State.Active"
+                      OnReuse="State.Reuse"
+                      OnClear="ClearHistory"
+                      OnClose="CloseSheet" />
+        break;
+
+    case SheetKind.Menu:
+        <Sheet Title="MultiCalc" OnClose="CloseSheet">
+            <ChildContent>
+                <div class="card">
+                    <button class="row row-tappable" @onclick="@(() => Go("settings"))">
+                        <Icon Name="settings" />
+                        <div class="row-text"><div class="row-title">Settings</div></div>
+                        <Icon Name="chevron" />
+                    </button>
+
+                    <button class="row row-tappable" @onclick="@(() => Go("about"))">
+                        <Icon Name="info" />
+                        <div class="row-text"><div class="row-title">How this app works</div></div>
+                        <Icon Name="chevron" />
+                    </button>
+
+                    <button class="row row-tappable" @onclick="Support">
+                        <Icon Name="heart" />
+                        <div class="row-text">
+                            <div class="row-title">Support this project</div>
+                            <div class="row-note">Opens your browser. A tip, not a purchase.</div>
+                        </div>
+                        <Icon Name="external" />
+                    </button>
+                </div>
+            </ChildContent>
+        </Sheet>
+        break;
+}
+
+@code {
+    private const string SupportUrl = "https://stepintothecode.github.io/support/?from=multicalc-app";
+    private const double SwipeThreshold = 55;
+
+    private enum SheetKind
+    {
+        None,
+        Instances,
+        History,
+        Menu,
+    }
+
+    private SheetKind sheet = SheetKind.None;
+    private double? swipeStartX;
+    private IDisposable? backHandler;
+
+    protected override void OnInitialized()
+    {
+        State.Changed += Repaint;
+
+        // Back closes an open sheet. With nothing open it is not ours, so the app closes.
+        backHandler = Back.Register(() =>
+        {
+            if (sheet == SheetKind.None)
+            {
+                return false;
+            }
+
+            sheet = SheetKind.None;
+            Repaint();
+
+            return true;
+        });
+    }
+
+    private string DisplayText
+    {
+        get
+        {
+            var typed = State.Active.Draft.ToDisplay();
+            return typed.Length > 0 ? typed : "0";
+        }
+    }
+
+    private string ResultText
+    {
+        get
+        {
+            if (State.ErrorMessage is not null)
+            {
+                return State.ErrorMessage;
+            }
+
+            return State.Active.LastResult is { } last ? $"= {last}" : string.Empty;
+        }
+    }
+
+    private void Open(SheetKind kind) => sheet = kind;
+
+    private void AddInApp()
+    {
+        if (State.AddInApp())
+        {
+            Toast.Show($"{State.Active.Name} added");
+        }
+    }
+
+    private void AddNative()
+    {
+        if (State.AddNative() == NativeLaunchOutcome.Launched)
+        {
+            Toast.Show("Opened. Find it in Recents.");
+        }
+    }
+
+    private void CloseSheet() => sheet = SheetKind.None;
+
+    private void ClearHistory()
+    {
+        State.ClearHistory(State.Active.Id);
+        Toast.Show("History cleared");
+    }
+
+    private async Task Support()
+    {
+        CloseSheet();
+
+        if (!await Browser.OpenAsync(SupportUrl))
+        {
+            Toast.Show("No browser could open that link");
+        }
+    }
+
+    private void Go(string page)
+    {
+        CloseSheet();
+        Nav.NavigateTo(page);
+    }
+
+    private void StartSwipe(PointerEventArgs e) => swipeStartX = e.ClientX;
+
+    private void CancelSwipe(PointerEventArgs e) => swipeStartX = null;
+
+    /// <summary>A sideways drag across the display moves to the next or previous calculator.</summary>
+    private void EndSwipe(PointerEventArgs e)
+    {
+        if (swipeStartX is not { } start)
+        {
+            return;
+        }
+
+        swipeStartX = null;
+
+        var travelled = e.ClientX - start;
+
+        if (Math.Abs(travelled) >= SwipeThreshold && State.Book.Sessions.Count > 1)
+        {
+            State.Step(travelled < 0 ? 1 : -1);
+            Toast.Show(State.Active.Name);
+        }
+    }
+
+    private void Repaint() => InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        State.Changed -= Repaint;
+        backHandler?.Dispose();
+    }
+}

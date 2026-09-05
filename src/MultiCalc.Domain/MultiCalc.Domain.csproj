@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\MultiCalc.Abstractions\MultiCalc.Abstractions.csproj" />
+  </ItemGroup>
+
+</Project>

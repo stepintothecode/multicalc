@@ -1,0 +1,21 @@
+<button class="toggle @(Value ? "is-on" : string.Empty)"
+        role="switch"
+        aria-checked="@Value"
+        aria-label="@Label"
+        @onclick="() => ValueChanged.InvokeAsync(!Value)">
+    <span class="toggle-knob"></span>
+</button>
+
+@code {
+    /// <summary>Whether the switch is on.</summary>
+    [Parameter, EditorRequired]
+    public bool Value { get; set; }
+
+    /// <summary>Describes what the switch controls, for screen readers.</summary>
+    [Parameter, EditorRequired]
+    public string Label { get; set; } = string.Empty;
+
+    /// <summary>Raised with the new value.</summary>
+    [Parameter]
+    public EventCallback<bool> ValueChanged { get; set; }
+}

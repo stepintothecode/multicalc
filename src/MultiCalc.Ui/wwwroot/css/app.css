@@ -1,0 +1,811 @@
+/* MultiCalc. One stylesheet, no framework.
+   Colours are tokens so light and dark stay in step; nothing below uses a raw colour. */
+
+:root {
+  --bg: #f3f5f7;
+  --surface: #ffffff;
+  --surface-2: #e8edf1;
+  --key: #ffffff;
+  --key-press: #dbe3ea;
+  --text: #10151a;
+  --text-dim: #5d6874;
+  --line: #dde4ea;
+  --accent: #007a68;
+  --accent-soft: #d7efea;
+  --on-accent: #ffffff;
+  --danger: #b8433a;
+  --shadow-key: 0 1px 2px rgba(16, 21, 26, .07);
+  --shadow-sheet: 0 -10px 44px rgba(16, 21, 26, .2);
+  --radius: 16px;
+  --tap: 130ms cubic-bezier(.2, .7, .3, 1);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0b0d10;
+    --surface: #13171c;
+    --surface-2: #1b2027;
+    --key: #21262e;
+    --key-press: #2e3540;
+    --text: #eceff3;
+    --text-dim: #8b95a1;
+    --line: #242a32;
+    --accent: #23c6aa;
+    --accent-soft: #0f302b;
+    --on-accent: #04221d;
+    --danger: #ef7c72;
+    --shadow-key: none;
+    --shadow-sheet: 0 -10px 44px rgba(0, 0, 0, .65);
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg: #0b0d10;
+  --surface: #13171c;
+  --surface-2: #1b2027;
+  --key: #21262e;
+  --key-press: #2e3540;
+  --text: #eceff3;
+  --text-dim: #8b95a1;
+  --line: #242a32;
+  --accent: #23c6aa;
+  --accent-soft: #0f302b;
+  --on-accent: #04221d;
+  --danger: #ef7c72;
+  --shadow-key: none;
+  --shadow-sheet: 0 -10px 44px rgba(0, 0, 0, .65);
+}
+
+/* ---------- calculator tag colours ----------
+   Each calculator carries a hue, set inline as --hue, and the two tokens below are built
+   from it. Saturation and lightness live here rather than travelling with the colour, so
+   any hue the picker can produce stays readable: dark enough to read on the light theme,
+   light enough to read on the dark one. A stored hex could not promise that. */
+
+.tinted {
+  --tint: hsl(var(--hue, 170) 62% 30%);
+  --tint-soft: hsl(var(--hue, 170) 58% 92%);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .tinted {
+    --tint: hsl(var(--hue, 170) 65% 63%);
+    --tint-soft: hsl(var(--hue, 170) 38% 15%);
+  }
+}
+
+:root[data-theme="dark"] .tinted {
+  --tint: hsl(var(--hue, 170) 65% 63%);
+  --tint-soft: hsl(var(--hue, 170) 38% 15%);
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+}
+
+button { font: inherit; color: inherit; border: none; background: none; cursor: pointer; padding: 0; }
+a { color: var(--accent); text-underline-offset: 2px; }
+
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 8px; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}
+
+/* Icons carry their own size so they can never stretch a flex row. */
+.ic { flex: none; width: 20px; height: 20px; display: block; }
+
+/* ---------- shell ---------- */
+
+/* Blazor's root sits between body and the layout, and an auto height here breaks the
+   percentage chain: the screen then ends after the keypad instead of filling the phone. */
+#app { height: 100%; }
+
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* ---------- top bar ---------- */
+
+.topbar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+}
+
+.tabs-btn {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 12px;
+  border-radius: 13px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  transition: background var(--tap), transform var(--tap);
+}
+
+.tabs-btn:active { background: var(--surface-2); transform: scale(.985); }
+
+/* The active calculator's colour fills the pill. A left edge was tried first and a border
+   on a rounded button renders as a thin curved sliver, which reads as a glitch. */
+.tabs-btn {
+  background: var(--tint-soft, var(--surface));
+  border-color: transparent;
+}
+
+.tabs-btn:active { background: var(--tint-soft, var(--surface-2)); filter: brightness(1.15); }
+.tabs-btn .ic { color: var(--tint, var(--accent)); }
+.tabs-btn .tabs-name { color: var(--tint, var(--text)); }
+
+.tabs-btn .tabs-count {
+  background: var(--tint, var(--accent));
+  color: var(--surface);
+}
+
+.tabs-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 15px;
+  font-weight: 650;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tabs-count {
+  flex: none;
+  min-width: 24px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.icon-btn {
+  flex: none;
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border-radius: 13px;
+  color: var(--text);
+  transition: background var(--tap);
+}
+
+.icon-btn:active { background: var(--surface-2); }
+.icon-btn .ic { width: 21px; height: 21px; }
+
+/* ---------- display ---------- */
+
+.stage {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  padding: 14px 22px 14px;
+  touch-action: pan-y;
+}
+
+.expression {
+  flex: none;
+
+  /* Holds the number down near the keys instead of up against the top bar, and does it
+     without relying on justify-content, which the scrolling expression box fights. */
+  margin-top: auto;
+  font-size: clamp(34px, 11vw, 54px);
+  font-weight: 350;
+  line-height: 1.18;
+  letter-spacing: -.015em;
+  text-align: right;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  overflow-x: auto;
+  overflow-y: hidden;
+  white-space: nowrap;
+  scrollbar-width: none;
+  direction: rtl;
+}
+
+.expression::-webkit-scrollbar { display: none; }
+.expression-inner { direction: ltr; display: inline-block; }
+.expression.is-placeholder { color: var(--text-dim); }
+
+.result {
+  flex: none;
+  margin-top: 10px;
+  height: 26px;
+  font-size: 17px;
+  text-align: right;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.result.is-error { color: var(--danger); }
+
+/* ---------- the two New buttons ---------- */
+
+.newrow {
+  flex: none;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding: 0 12px 10px;
+}
+
+.newbtn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  min-width: 0;
+  text-align: left;
+  transition: transform var(--tap), background var(--tap);
+}
+
+.newbtn:active { transform: scale(.97); }
+.newbtn .ic { width: 22px; height: 22px; }
+
+.newbtn-text { min-width: 0; display: block; }
+
+.newbtn-title {
+  display: block;
+  font-size: 14px;
+  font-weight: 650;
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.newbtn-note {
+  display: block;
+  font-size: 11.5px;
+  line-height: 1.3;
+  opacity: .72;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The two are deliberately not twins. In-app is the everyday one and reads as filled;
+   the phone one is an outline, because it sends you out of the app. */
+.newbtn-app {
+  background: var(--accent-soft);
+  border: 1.5px solid transparent;
+  color: var(--accent);
+}
+
+.newbtn-app:active { background: var(--accent-soft); filter: brightness(1.06); }
+
+.newbtn-phone {
+  background: transparent;
+  border: 1.5px dashed var(--line);
+  color: var(--text);
+}
+
+.newbtn-phone .ic { color: var(--text-dim); }
+.newbtn-phone:active { background: var(--surface-2); }
+
+/* Disabled rather than hidden: the note says why, so the phone's limitation is visible
+   instead of silently missing. */
+.newbtn.is-off { opacity: .45; }
+.newbtn:disabled:active { transform: none; background: transparent; }
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border-radius: 13px;
+  font-size: 14.5px;
+  font-weight: 650;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  color: var(--text);
+  transition: transform var(--tap), background var(--tap);
+}
+
+.btn:active { transform: scale(.97); background: var(--surface-2); }
+.btn-grow { flex: 1 1 auto; }
+.btn-block { width: 100%; }
+
+.btn-primary { background: var(--accent); border-color: transparent; color: var(--on-accent); }
+.btn-primary:active { background: var(--accent); filter: brightness(1.09); }
+.btn-danger { color: var(--danger); }
+.btn:disabled { opacity: .45; }
+.btn:disabled:active { transform: none; }
+
+.btn-icon { flex: none; width: 46px; padding: 12px 0; }
+
+/* ---------- keypad ---------- */
+
+/* Round keys with real space between them. A circle that stops short of its cell gives
+   every key a moat, so a thumb landing slightly off still hits the one it aimed at.
+   The diameter is whichever is smaller, the width four keys can share or a slice of the
+   screen height, so the keys stay circular instead of stretching on an odd screen. */
+.keypad {
+  --pad: 14px;
+  --gap: 11px;
+  --key-size: min(calc((100vw - 2 * var(--pad) - 3 * var(--gap)) / 4), 10.5vh);
+
+  flex: none;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+
+  /* Five rows of circles, then a shorter one for equals: a full circle's height of solid
+     colour across the whole width is a slab, not a key. */
+  grid-template-rows: repeat(5, var(--key-size)) calc(var(--key-size) * 0.74);
+  gap: var(--gap);
+  padding: 0 var(--pad) 12px;
+  justify-items: center;
+
+  /* The keypad owns the gesture: without this the browser starts scrolling as soon as
+     the finger slides, and the slide-to-press never gets its moves. */
+  touch-action: none;
+}
+
+.key {
+  width: var(--key-size);
+  height: var(--key-size);
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--key);
+  box-shadow: var(--shadow-key);
+  font-size: calc(var(--key-size) * 0.36);
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+  transition: transform var(--tap), background var(--tap);
+}
+
+/* is-down comes from keypad.js. The pointer is captured on the keypad, so :active never
+   lands on the key the finger is actually over. */
+.key:active,
+.key.is-down { background: var(--key-press); transform: scale(.9); }
+.key .ic { width: calc(var(--key-size) * 0.33); height: calc(var(--key-size) * 0.33); }
+
+.key-fn { color: var(--accent); font-size: calc(var(--key-size) * 0.3); font-weight: 600; }
+.key-op { color: var(--accent); font-weight: 600; }
+.key-clear { color: var(--danger); font-weight: 600; }
+
+.key-equals { background: var(--accent); color: var(--on-accent); font-weight: 700; }
+.key-equals:active,
+.key-equals.is-down { background: var(--accent); filter: brightness(1.1); transform: scale(.97); }
+
+/* Equals spans the row: it is pressed more than any other key and deserves the reach.
+   A stadium rather than a circle, which keeps the fully rounded language of the keypad. */
+.key-wide {
+  grid-column: 1 / -1;
+  width: 100%;
+  height: 100%;
+  border-radius: 999px;
+  font-size: calc(var(--key-size) * 0.3);
+}
+
+/* ---------- sheets ---------- */
+
+.scrim {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, .45);
+  z-index: 20;
+  animation: fade var(--tap) ease-out;
+}
+
+.sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 21;
+  max-height: 84%;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border-radius: 22px 22px 0 0;
+  box-shadow: var(--shadow-sheet);
+  animation: rise 230ms cubic-bezier(.2, .8, .25, 1);
+}
+
+@keyframes rise { from { transform: translateY(100%); } to { transform: translateY(0); } }
+@keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+
+.sheet-grip {
+  flex: none;
+  width: 38px;
+  height: 4px;
+  margin: 10px auto 2px;
+  border-radius: 2px;
+  background: var(--line);
+}
+
+.sheet-head {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 8px 8px 18px;
+}
+
+.sheet-title { flex: 1 1 auto; font-size: 16.5px; font-weight: 700; }
+
+.sheet-body {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: 2px 14px 18px;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ---------- instance list ---------- */
+
+.instance {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px 4px 12px;
+  border-radius: 14px;
+  border: 1.5px solid transparent;
+  background: var(--surface-2);
+  transition: background var(--tap), border-color var(--tap);
+}
+
+.instance + .instance { margin-top: 8px; }
+.instance.is-active { border-color: var(--tint, var(--accent)); background: var(--tint-soft, var(--accent-soft)); }
+
+.instance-dot {
+  flex: none;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: var(--tint, var(--accent));
+}
+
+.instance-open {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 10px 0;
+  text-align: left;
+}
+
+.instance-name {
+  font-size: 15px;
+  font-weight: 650;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.instance.is-active .instance-name { color: var(--tint, var(--accent)); }
+
+.instance-sub {
+  margin-top: 1px;
+  font-size: 12.5px;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.instance-act {
+  flex: none;
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 11px;
+  color: var(--text-dim);
+  transition: background var(--tap), color var(--tap);
+}
+
+.instance-act:active { background: var(--surface); }
+.instance-act.is-close:active { color: var(--danger); }
+.instance-act .ic { width: 18px; height: 18px; }
+
+.instance-edit { display: flex; flex-direction: column; gap: 10px; width: 100%; padding: 6px 6px 8px 0; }
+.instance-edit-row { display: flex; align-items: center; gap: 8px; }
+
+.swatches {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 8px;
+  justify-items: center;
+}
+
+.swatch {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--tint);
+  border: none;
+  transition: transform var(--tap), box-shadow var(--tap);
+}
+
+.swatch:active { transform: scale(.85); }
+
+/* The chosen one gets a ring around it rather than a tick, which would need a contrasting
+   colour against every possible fill. The gap keeps the ring off the colour itself. */
+.swatch.is-on { box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--text); }
+
+/* The picker proper: every hue on the wheel, for when none of the quick ones will do. */
+.hue-row { display: flex; align-items: center; gap: 12px; }
+
+.hue-slider {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 22px;
+  appearance: none;
+  -webkit-appearance: none;
+  border-radius: 999px;
+  background: linear-gradient(to right,
+    hsl(0 70% 50%), hsl(60 70% 50%), hsl(120 70% 50%),
+    hsl(180 70% 50%), hsl(240 70% 50%), hsl(300 70% 50%), hsl(360 70% 50%));
+}
+
+.hue-slider::-webkit-slider-thumb {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--tint);
+  border: 3px solid var(--surface);
+  box-shadow: 0 0 0 1px var(--line);
+}
+
+.hue-preview {
+  flex: none;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--tint);
+}
+
+/* ---------- history ---------- */
+
+.tape { display: flex; flex-direction: column; gap: 2px; }
+
+.tape-row {
+  display: block;
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 12px;
+  text-align: right;
+  transition: background var(--tap);
+}
+
+.tape-row:active { background: var(--surface-2); }
+
+.tape-expr {
+  font-size: 13px;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tape-result {
+  font-size: 19px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tape-time { font-size: 11px; color: var(--text-dim); }
+
+/* ---------- pages ---------- */
+
+.page {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.page-heading {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 17px;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.page-body { flex: 1 1 auto; overflow-y: auto; padding: 2px 18px 30px; }
+.page-title { font-size: 26px; font-weight: 700; letter-spacing: -.02em; margin: 4px 0 12px; }
+.page-pad { padding: 20px 18px; }
+
+.section { margin-top: 24px; }
+
+.section-label {
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-bottom: 9px;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  width: 100%;
+  padding: 14px 15px;
+  text-align: left;
+  transition: background var(--tap);
+}
+
+.row + .row { border-top: 1px solid var(--line); }
+.row-tappable:active { background: var(--surface-2); }
+.row-text { flex: 1 1 auto; min-width: 0; }
+.row-title { font-size: 15px; font-weight: 650; }
+.row-note { font-size: 12.5px; color: var(--text-dim); margin-top: 2px; }
+.row-value { font-size: 13.5px; color: var(--text-dim); font-variant-numeric: tabular-nums; }
+.row .ic { color: var(--text-dim); }
+.row-tappable .ic:last-child { color: var(--line); }
+
+/* Segmented control, for theme */
+.segmented {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 3px;
+  padding: 3px;
+  border-radius: 13px;
+  background: var(--surface-2);
+}
+
+.segment {
+  padding: 10px 6px;
+  border-radius: 10px;
+  font-size: 13.5px;
+  font-weight: 650;
+  color: var(--text-dim);
+  transition: background var(--tap), color var(--tap);
+}
+
+.segment.is-on { background: var(--surface); color: var(--text); box-shadow: var(--shadow-key); }
+
+/* Choice cards, for the setup sheet and the new-button preference */
+.choice {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+  padding: 15px;
+  border-radius: var(--radius);
+  border: 1.5px solid var(--line);
+  background: var(--surface);
+  text-align: left;
+  transition: border-color var(--tap), background var(--tap);
+}
+
+.choice + .choice { margin-top: 10px; }
+.choice.is-on { border-color: var(--accent); background: var(--accent-soft); }
+.choice.is-disabled { opacity: .55; }
+.choice-title { font-size: 15px; font-weight: 700; }
+.choice-note { font-size: 13px; color: var(--text-dim); margin-top: 3px; }
+.choice .ic { color: var(--accent); margin-top: 2px; }
+
+/* Toggle switch */
+.toggle {
+  flex: none;
+  width: 46px;
+  height: 27px;
+  padding: 3px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  transition: background var(--tap), border-color var(--tap);
+}
+
+.toggle-knob {
+  display: block;
+  width: 19px;
+  height: 19px;
+  border-radius: 50%;
+  background: var(--text-dim);
+  transition: transform var(--tap), background var(--tap);
+}
+
+.toggle.is-on { background: var(--accent); border-color: transparent; }
+.toggle.is-on .toggle-knob { transform: translateX(19px); background: var(--on-accent); }
+
+.muted { color: var(--text-dim); }
+.small { font-size: 13px; }
+.prose { font-size: 14.5px; line-height: 1.62; }
+.prose p { margin: 0 0 12px; }
+.prose strong { font-weight: 700; }
+.empty { text-align: center; color: var(--text-dim); font-size: 14px; padding: 34px 20px; }
+
+.badge {
+  display: inline-block;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 700;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.badge-off { background: var(--surface-2); color: var(--text-dim); }
+
+/* ---------- toast ---------- */
+
+/* Above the display, not over the keypad: a message that covers the equals key is a
+   message that gets pressed through. */
+.toast {
+  position: fixed;
+  left: 50%;
+  top: 66px;
+  transform: translateX(-50%);
+  z-index: 30;
+  max-width: calc(100% - 36px);
+  padding: 11px 18px;
+  border-radius: 999px;
+  background: var(--text);
+  color: var(--bg);
+  font-size: 13.5px;
+  font-weight: 650;
+  text-align: center;
+  animation: fade var(--tap) ease-out;
+}
+
+/* Rename field */
+.field {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 11px 13px;
+  border-radius: 11px;
+  border: 1.5px solid var(--accent);
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 15px;
+  user-select: text;
+}
+
+.field:focus { outline: none; }

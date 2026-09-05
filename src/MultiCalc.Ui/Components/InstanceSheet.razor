@@ -1,0 +1,127 @@
+@* The list of calculators in this app: switch, rename, recolour, close.
+
+   Adding is deliberately not here. The two buttons on the main screen already do it, and
+   a second pair in this sheet would be the same feature in two places. *@
+
+<Sheet Title="Calculators" OnClose="OnClose">
+    <HeadActions>
+        <span class="badge @(State.Book.IsFull ? "badge-off" : string.Empty)">
+            @State.Book.Sessions.Count / @SessionBook.MaxSessions
+        </span>
+    </HeadActions>
+
+    <ChildContent>
+        @foreach (var session in State.Book.Sessions)
+        {
+            var isActive = session.Id == State.Book.ActiveId;
+
+            <div class="instance tinted @(isActive ? "is-active" : string.Empty)"
+                 style="@session.Tint.Style">
+                @if (editingId == session.Id)
+                {
+                    <div class="instance-edit">
+                        <div class="instance-edit-row">
+                            <input class="field" @bind="editingName" @bind:event="oninput"
+                                   @onkeydown="@(e => OnRenameKey(e, session.Id))"
+                                   maxlength="40" aria-label="Calculator name" />
+                            <button class="instance-act" @onclick="() => CommitRename(session.Id)"
+                                    aria-label="Save name">
+                                <Icon Name="check" />
+                            </button>
+                        </div>
+
+                        <div class="swatches" role="group" aria-label="Quick colours">
+                            @foreach (var tint in CalculatorTint.Palette)
+                            {
+                                <button class="swatch tinted @(session.Tint == tint ? "is-on" : string.Empty)"
+                                        style="@tint.Style"
+                                        aria-label="Hue @tint.Hue"
+                                        @onclick="() => State.SetTint(session.Id, tint)"></button>
+                            }
+                        </div>
+
+                        <div class="hue-row">
+                            <span class="hue-preview tinted" style="@session.Tint.Style"></span>
+                            <input class="hue-slider tinted" type="range" min="0" max="359"
+                                   style="@session.Tint.Style"
+                                   value="@session.Tint.Hue"
+                                   @oninput="e => PickHue(session.Id, e)"
+                                   aria-label="Colour" />
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <span class="instance-dot"></span>
+
+                    <button class="instance-open" @onclick="() => Select(session.Id)">
+                        <div class="instance-name">@session.Name</div>
+                        <div class="instance-sub">@SessionPreview.ForList(session)</div>
+                    </button>
+
+                    <button class="instance-act" @onclick="() => StartRename(session)"
+                            aria-label="Rename and recolour @session.Name">
+                        <Icon Name="edit" />
+                    </button>
+
+                    <button class="instance-act is-close" @onclick="() => State.Close(session.Id)"
+                            aria-label="Close @session.Name">
+                        <Icon Name="close" />
+                    </button>
+                }
+            </div>
+        }
+    </ChildContent>
+</Sheet>
+
+@code {
+    private string? editingId;
+    private string editingName = string.Empty;
+
+    /// <summary>The shared calculator state.</summary>
+    [Parameter, EditorRequired]
+    public CalculatorState State { get; set; } = default!;
+
+    /// <summary>Raised when the sheet should close.</summary>
+    [Parameter]
+    public EventCallback OnClose { get; set; }
+
+    private async Task Select(string id)
+    {
+        State.Activate(id);
+        await OnClose.InvokeAsync();
+    }
+
+    /// <summary>Applies the slider's hue as it moves, so the colour follows the thumb.</summary>
+    private void PickHue(string id, ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var hue))
+        {
+            State.SetTint(id, CalculatorTint.FromHue(hue));
+        }
+    }
+
+    private void StartRename(CalculatorSession session)
+    {
+        editingId = session.Id;
+        editingName = session.Name;
+    }
+
+    private void CommitRename(string id)
+    {
+        State.Rename(id, editingName);
+        editingId = null;
+    }
+
+    private void OnRenameKey(KeyboardEventArgs e, string id)
+    {
+        if (e.Key == "Enter")
+        {
+            CommitRename(id);
+        }
+        else if (e.Key == "Escape")
+        {
+            editingId = null;
+        }
+    }
+}

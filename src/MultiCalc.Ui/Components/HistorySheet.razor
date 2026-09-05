@@ -1,0 +1,54 @@
+@* The tape for the calculator that is showing. Tap a result to put it back on the display. *@
+
+<Sheet Title="@($"{Session.Name} history")" OnClose="OnClose">
+    <ChildContent>
+        @if (Session.History.Count == 0)
+        {
+            <p class="empty">Nothing worked out on this calculator yet.</p>
+        }
+        else
+        {
+            <div class="tape">
+                @foreach (var entry in Session.History)
+                {
+                    <button class="tape-row" @onclick="() => Reuse(entry.Result)">
+                        <div class="tape-expr">@entry.Expression</div>
+                        <div class="tape-result">@entry.Result</div>
+                        <div class="tape-time">@entry.At.ToLocalTime().ToString("d MMM, HH:mm")</div>
+                    </button>
+                }
+            </div>
+
+            <button class="btn btn-danger" style="width:100%;margin-top:14px" @onclick="Clear">
+                <Icon Name="trash" />
+                Clear this history
+            </button>
+        }
+    </ChildContent>
+</Sheet>
+
+@code {
+    /// <summary>The calculator whose history is shown.</summary>
+    [Parameter, EditorRequired]
+    public CalculatorSession Session { get; set; } = default!;
+
+    /// <summary>Raised when a past result should go back on the display.</summary>
+    [Parameter]
+    public EventCallback<string> OnReuse { get; set; }
+
+    /// <summary>Raised when the history should be emptied.</summary>
+    [Parameter]
+    public EventCallback OnClear { get; set; }
+
+    /// <summary>Raised when the sheet should close.</summary>
+    [Parameter]
+    public EventCallback OnClose { get; set; }
+
+    private async Task Reuse(string result)
+    {
+        await OnReuse.InvokeAsync(result);
+        await OnClose.InvokeAsync();
+    }
+
+    private Task Clear() => OnClear.InvokeAsync();
+}

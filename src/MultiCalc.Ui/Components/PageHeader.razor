@@ -1,0 +1,16 @@
+@inject NavigationManager Nav
+
+<div class="topbar">
+    <button class="icon-btn" @onclick="Back" aria-label="Back">
+        <Icon Name="back" />
+    </button>
+    <div class="page-heading">@Title</div>
+</div>
+
+@code {
+    /// <summary>Shown beside the back button.</summary>
+    [Parameter, EditorRequired]
+    public string Title { get; set; } = string.Empty;
+
+    private void Back() => Nav.NavigateTo(string.Empty);
+}

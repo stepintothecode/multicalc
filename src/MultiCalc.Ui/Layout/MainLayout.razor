@@ -1,0 +1,44 @@
+@inherits LayoutComponentBase
+@implements IDisposable
+@inject SettingsState Settings
+@inject ThemeApplier Theme
+@inject ToastService Toast
+
+@Body
+
+@if (Toast.Message is not null)
+{
+    <div class="toast" role="status">@Toast.Message</div>
+}
+
+@code {
+    private ThemePreference applied = ThemePreference.System;
+    private bool firstApply = true;
+
+    protected override void OnInitialized()
+    {
+        Settings.Changed += Repaint;
+        Toast.Changed += Repaint;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // The theme lives on the document root rather than in Blazor's tree, so it is pushed
+        // out after render rather than bound.
+        if (firstApply || applied != Settings.Current.Theme)
+        {
+            firstApply = false;
+            applied = Settings.Current.Theme;
+
+            await Theme.ApplyAsync(applied);
+        }
+    }
+
+    private void Repaint() => InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        Settings.Changed -= Repaint;
+        Toast.Changed -= Repaint;
+    }
+}

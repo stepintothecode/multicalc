@@ -1,0 +1,118 @@
+@page "/about"
+@implements IDisposable
+@inject CalculatorState State
+@inject IAppBuildInfo Info
+@inject BackNavigation Back
+@inject NavigationManager Nav
+
+<div class="page">
+    <PageHeader Title="How this app works" />
+
+    <div class="page-body">
+
+        <div class="section" style="margin-top:2px">
+            <div class="section-label">The two New buttons</div>
+
+            <div class="card">
+                <div class="row">
+                    <Icon Name="calc-app" />
+                    <div class="row-text">
+                        <div class="row-title">In this app</div>
+                        <div class="row-note">
+                            Adds a calculator to your list. Each keeps its own display and history.
+                            Use it to keep several sums going at once.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <Icon Name="calc-phone" />
+                    <div class="row-text">
+                        <div class="row-title">Phone calculator</div>
+                        <div class="row-note">
+                            Opens another copy of the calculator your phone came with. It lands
+                            outside MultiCalc, as its own card in Recents. Use it when you want the
+                            calculator you are used to.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <p class="small muted" style="margin:10px 4px 0">
+                @DeviceNote
+            </p>
+        </div>
+
+        <div class="section">
+            <div class="section-label">All calculators</div>
+            <div class="card">
+                <div class="row">
+                    <Icon Name="layers" />
+                    <div class="row-text">
+                        <div class="row-title">The button at the top</div>
+                        <div class="row-note">
+                            Lists every calculator in this app. Tap one to switch, the pencil to
+                            rename, the cross to close. Swiping the display sideways also switches.
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <Icon Name="history" />
+                    <div class="row-text">
+                        <div class="row-title">History</div>
+                        <div class="row-note">
+                            One tape per calculator. Tap a past result to put it back on the display.
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <p class="small muted" style="margin:10px 4px 0">
+                Phone calculators are not in this list. They live in Recents.
+            </p>
+        </div>
+
+        <div class="section">
+            <div class="section-label">Your data</div>
+            <p class="prose" style="margin:0">
+                Everything stays on this phone. No account, no server, no analytics.
+            </p>
+        </div>
+
+        <div class="section">
+            <div class="section-label">Build</div>
+            <div class="card">
+                <div class="row">
+                    <div class="row-text"><div class="row-title">Version</div></div>
+                    <span class="row-value">@Info.Version (@Info.Build)</span>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+@code {
+    private IDisposable? backHandler;
+
+    protected override void OnInitialized() => backHandler = Back.Register(GoBack);
+
+    private string DeviceNote => State.NativeStatus.Support switch
+    {
+        NativeCalculatorSupport.Supported =>
+            $"This phone's calculator ({State.NativeStatus.DisplayName ?? "Calculator"}) opens more than one window, so both buttons work.",
+        NativeCalculatorSupport.SingleInstanceOnly =>
+            "This phone's calculator only ever opens one window, so that button is off. Nothing an app can change.",
+        NativeCalculatorSupport.NoCalculatorFound =>
+            "No calculator app was found on this phone, so that button is off.",
+        _ =>
+            "Opening the phone's calculator is not available here.",
+    };
+
+    private bool GoBack()
+    {
+        Nav.NavigateTo(string.Empty);
+        return true;
+    }
+
+    public void Dispose() => backHandler?.Dispose();
+}

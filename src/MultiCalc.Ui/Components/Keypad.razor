@@ -1,0 +1,166 @@
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+
+@* The keys. Layout is fixed on purpose: muscle memory beats configurability on a
+   calculator.
+
+   Presses normally come from keypad.js, so a key fires as the finger lands and again as
+   it slides onto the next one. The @@onclick handlers are the path for a keyboard or a
+   screen reader, and the whole keypad's safety net if the script ever fails to attach. *@
+
+<div class="keypad" role="group" aria-label="Keypad" @ref="root">
+    <button class="key key-clear" data-key="Clear" aria-label="Clear"
+            @onclick="e => Clicked(e, nameof(CalculatorKey.Clear))">AC</button>
+
+    <button class="key key-fn" data-key="Backspace" aria-label="Backspace"
+            @onclick="e => Clicked(e, nameof(CalculatorKey.Backspace))">
+        <Icon Name="backspace" />
+    </button>
+
+    <button class="key key-fn" data-key="Brackets" aria-label="Brackets"
+            @onclick="e => Clicked(e, BracketsKey)">( )</button>
+
+    <button class="key key-fn" data-key="Percent" aria-label="Percent"
+            @onclick="e => Clicked(e, nameof(CalculatorKey.Percent))">%</button>
+
+    @foreach (var row in DigitRows)
+    {
+        @foreach (var digit in row.Digits)
+        {
+            <button class="key" data-key="@digit.Key"
+                    @onclick="e => Clicked(e, digit.Key.ToString())">@digit.Label</button>
+        }
+
+        <button class="key key-op" data-key="@row.Operator.Key" aria-label="@row.Operator.Label"
+                @onclick="e => Clicked(e, row.Operator.Key.ToString())">
+            @row.Operator.Glyph
+        </button>
+    }
+
+    <button class="key key-fn" data-key="ToggleSign" aria-label="Change sign"
+            @onclick="e => Clicked(e, nameof(CalculatorKey.ToggleSign))">+/−</button>
+
+    <button class="key" data-key="Zero"
+            @onclick="e => Clicked(e, nameof(CalculatorKey.Zero))">0</button>
+
+    <button class="key" data-key="Decimal" aria-label="Decimal point"
+            @onclick="e => Clicked(e, nameof(CalculatorKey.Decimal))">.</button>
+
+    <button class="key key-op" data-key="Add" aria-label="Add"
+            @onclick="e => Clicked(e, nameof(CalculatorKey.Add))">+</button>
+
+    <button class="key key-equals key-wide" data-key="Equals" aria-label="Equals"
+            @onclick="e => Clicked(e, EqualsKey)">=</button>
+</div>
+
+@code {
+    private sealed record Digit(CalculatorKey Key, string Label);
+
+    private sealed record Operator(CalculatorKey Key, string Glyph, string Label);
+
+    private sealed record Row(Digit[] Digits, Operator Operator);
+
+    private static readonly Row[] DigitRows =
+    [
+        new([new(CalculatorKey.Seven, "7"), new(CalculatorKey.Eight, "8"), new(CalculatorKey.Nine, "9")],
+            new(CalculatorKey.Divide, "÷", "Divide")),
+        new([new(CalculatorKey.Four, "4"), new(CalculatorKey.Five, "5"), new(CalculatorKey.Six, "6")],
+            new(CalculatorKey.Multiply, "×", "Multiply")),
+        new([new(CalculatorKey.One, "1"), new(CalculatorKey.Two, "2"), new(CalculatorKey.Three, "3")],
+            new(CalculatorKey.Subtract, "−", "Subtract")),
+    ];
+
+    /// <summary>The two keys that are not a plain <see cref="CalculatorKey"/>.</summary>
+    private const string BracketsKey = "Brackets";
+
+    private const string EqualsKey = "Equals";
+
+    private ElementReference root;
+    private DotNetObjectReference<Keypad>? self;
+    private bool pointerHandled;
+
+    /// <summary>Raised for every key except equals.</summary>
+    [Parameter, EditorRequired]
+    public EventCallback<CalculatorKey> OnKey { get; set; }
+
+    /// <summary>Raised when equals is pressed.</summary>
+    [Parameter, EditorRequired]
+    public EventCallback OnEquals { get; set; }
+
+    /// <summary>What is currently typed, used to decide which bracket the one key sends.</summary>
+    [Parameter]
+    public ExpressionDraft Draft { get; set; } = ExpressionDraft.Empty;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        self = DotNetObjectReference.Create(this);
+
+        try
+        {
+            await JS.InvokeVoidAsync("multicalcKeypad.attach", root, self);
+            pointerHandled = true;
+        }
+        catch (JSException)
+        {
+            // The click handler below then carries every press on its own, so a missing or
+            // broken script costs the slide-to-press feel rather than the whole keypad.
+            pointerHandled = false;
+        }
+    }
+
+    /// <summary>
+    /// The path for presses the helper did not take: a keyboard or a screen reader, which
+    /// send a click with a detail of zero, and every press at all when the helper failed.
+    /// </summary>
+    private Task Clicked(MouseEventArgs e, string key) =>
+        pointerHandled && e.Detail > 0 ? Task.CompletedTask : Handle(key);
+
+    /// <summary>Called from keypad.js with the name on the key's data attribute.</summary>
+    [JSInvokable]
+    public Task PressFromPointer(string key) => InvokeAsync(() => Handle(key));
+
+    private async Task Handle(string key)
+    {
+        switch (key)
+        {
+            case "Equals":
+                await OnEquals.InvokeAsync();
+                break;
+
+            case "Brackets":
+                await OnKey.InvokeAsync(WhichBracket());
+                break;
+
+            default:
+                if (Enum.TryParse<CalculatorKey>(key, out var parsed))
+                {
+                    await OnKey.InvokeAsync(parsed);
+                }
+
+                break;
+        }
+    }
+
+    /// <summary>
+    /// One key for both brackets. It closes when there is something open to close and the
+    /// expression ends in a value, and opens otherwise, which is what the draft would accept
+    /// anyway. Pressing it always does something.
+    /// </summary>
+    private CalculatorKey WhichBracket()
+    {
+        var closing = Draft.Press(CalculatorKey.CloseParen);
+
+        return closing.Expression == Draft.Expression ? CalculatorKey.OpenParen : CalculatorKey.CloseParen;
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        self?.Dispose();
+        await ValueTask.CompletedTask;
+    }
+}

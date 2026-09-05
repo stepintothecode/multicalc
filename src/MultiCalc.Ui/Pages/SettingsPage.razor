@@ -1,0 +1,197 @@
+@page "/settings"
+@implements IDisposable
+@inject CalculatorState State
+@inject SettingsState Settings
+@inject ToastService Toast
+@inject BackNavigation Back
+@inject NavigationManager Nav
+@inject IHaptics Haptics
+
+<div class="page">
+    <PageHeader Title="Settings" />
+
+    <div class="page-body">
+
+        <div class="section" style="margin-top:6px">
+            <div class="section-label">Theme</div>
+            <div class="segmented">
+                @foreach (var option in Themes)
+                {
+                    <button class="segment @(Settings.Current.Theme == option.Value ? "is-on" : string.Empty)"
+                            @onclick="() => SetTheme(option.Value)">
+                        @option.Label
+                    </button>
+                }
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-label">Keys</div>
+            <div class="card">
+                <div class="row">
+                    <div class="row-text">
+                        <div class="row-title">Vibrate on key press</div>
+                        <div class="row-note">Needs vibration turned on in your phone's sound settings</div>
+                    </div>
+                    <Toggle Value="Settings.Current.HapticFeedback"
+                            Label="Vibrate on key press"
+                            ValueChanged="SetHaptics" />
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-label">History</div>
+            <div class="card">
+                <button class="row row-tappable" @onclick="() => exporting = true">
+                    <Icon Name="export" />
+                    <div class="row-text">
+                        <div class="row-title">Export</div>
+                        <div class="row-note">
+                            @Kept saved. Only MultiCalc's own JSON can be imported back.
+                        </div>
+                    </div>
+                    <Icon Name="chevron" />
+                </button>
+
+                <button class="row row-tappable" disabled="@importing" @onclick="Import">
+                    <Icon Name="import" />
+                    <div class="row-text">
+                        <div class="row-title">Import</div>
+                        <div class="row-note">
+                            MultiCalc JSON only. Merges by name, overwrites nothing.
+                        </div>
+                    </div>
+                    <Icon Name="chevron" />
+                </button>
+
+                <button class="row row-tappable" @onclick="ClearAll">
+                    <Icon Name="trash" />
+                    <div class="row-text">
+                        <div class="row-title" style="color:var(--danger)">Clear every history</div>
+                    </div>
+                </button>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+@if (exporting)
+{
+    <ExportSheet OnExport="Export" OnClose="() => exporting = false" />
+}
+
+@code {
+    private sealed record ThemeOption(ThemePreference Value, string Label);
+
+    private static readonly ThemeOption[] Themes =
+    [
+        new(ThemePreference.System, "System"),
+        new(ThemePreference.Light, "Light"),
+        new(ThemePreference.Dark, "Dark"),
+    ];
+
+    private bool exporting;
+    private bool importing;
+
+    private IDisposable? backHandler;
+
+    protected override void OnInitialized()
+    {
+        Settings.Changed += Repaint;
+        State.Changed += Repaint;
+        backHandler = Back.Register(GoBack);
+    }
+
+    private int Kept => State.Book.Sessions.Sum(s => s.History.Count);
+
+    private Task SetTheme(ThemePreference theme) =>
+        Settings.UpdateAsync(s => s with { Theme = theme });
+
+    private async Task SetHaptics(bool on)
+    {
+        await Settings.UpdateAsync(s => s with { HapticFeedback = on });
+
+        // Buzz straight away when it is switched on, so the setting proves itself instead of
+        // being taken on trust until the next key press.
+        if (on)
+        {
+            Haptics.Tap();
+        }
+    }
+
+    private bool GoBack()
+    {
+        if (exporting)
+        {
+            exporting = false;
+            Repaint();
+            return true;
+        }
+
+        Nav.NavigateTo(string.Empty);
+        return true;
+    }
+
+    private void ClearAll()
+    {
+        if (Kept == 0)
+        {
+            Toast.Show("There is no history to clear");
+            return;
+        }
+
+        State.ClearAllHistory();
+        Toast.Show("Every history cleared");
+    }
+
+    private async Task Export(HistoryFormat format)
+    {
+        var result = await State.ExportHistoryAsync(format);
+
+        exporting = false;
+
+        if (result.Saved)
+        {
+            Toast.Show("History saved");
+        }
+        else if (result.Failure is { } failure)
+        {
+            Toast.Show(failure);
+        }
+    }
+
+    private async Task Import()
+    {
+        // The picker takes a moment, and tapping twice would open two of them.
+        importing = true;
+
+        try
+        {
+            var outcome = await State.ImportHistoryAsync();
+
+            if (outcome.Failure is { } failure)
+            {
+                Toast.Show(failure);
+            }
+            else if (outcome.EntryCount > 0)
+            {
+                Toast.Show($"Imported {outcome.EntryCount} calculations");
+            }
+        }
+        finally
+        {
+            importing = false;
+        }
+    }
+
+    private void Repaint() => InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        Settings.Changed -= Repaint;
+        State.Changed -= Repaint;
+        backHandler?.Dispose();
+    }
+}

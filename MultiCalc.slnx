@@ -1,0 +1,19 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/MultiCalc.Abstractions/MultiCalc.Abstractions.csproj" />
+    <Project Path="src/MultiCalc.App/MultiCalc.App.csproj" />
+    <Project Path="src/MultiCalc.Domain/MultiCalc.Domain.csproj" />
+    <Project Path="src/MultiCalc.Evaluation/MultiCalc.Evaluation.csproj" />
+    <Project Path="src/MultiCalc.Storage/MultiCalc.Storage.csproj" />
+    <Project Path="src/MultiCalc.Ui/MultiCalc.Ui.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/MultiCalc.Domain.Tests/MultiCalc.Domain.Tests.csproj" />
+    <Project Path="tests/MultiCalc.Evaluation.Tests/MultiCalc.Evaluation.Tests.csproj" />
+    <Project Path="tests/MultiCalc.Storage.Tests/MultiCalc.Storage.Tests.csproj" />
+    <Project Path="tests/MultiCalc.Ui.Tests/MultiCalc.Ui.Tests.csproj" />
+  </Folder>
+  <Folder Name="/tests/support/">
+    <Project Path="tests/support/MultiCalc.TestSupport.csproj" />
+  </Folder>
+</Solution>

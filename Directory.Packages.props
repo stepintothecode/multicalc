@@ -1,0 +1,43 @@
+<Project>
+
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
+  </PropertyGroup>
+
+  <ItemGroup Label="Evaluation">
+    <!-- Expression parsing and evaluation. Writing another infix parser would be the
+         one wheel this project has no reason to rebuild. -->
+    <PackageVersion Include="NCalc" Version="7.1.0" />
+  </ItemGroup>
+
+  <ItemGroup Label="Extensions">
+    <!-- 10.0.10 rather than 10.0.0: NCalc.Core asks for it, and transitive pinning is on. -->
+    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.10" />
+  </ItemGroup>
+
+  <ItemGroup Label="UI">
+    <PackageVersion Include="Microsoft.AspNetCore.Components.Web" Version="10.0.0" />
+  </ItemGroup>
+
+  <ItemGroup Label="MAUI">
+    <!-- Microsoft.Maui.Controls is deliberately absent. UseMaui=true adds it implicitly at
+         whatever version the installed workload provides, and pinning a different one here
+         gives a TypeLoadException on Microsoft.Maui.Controls.Page at startup. The web view
+         package has to track the same version, so it takes it from $(MauiVersion). -->
+    <PackageVersion Include="Microsoft.Extensions.Logging.Debug" Version="10.0.0" />
+    <!-- Only for IFileSaver, which wraps the Storage Access Framework on Android.
+         Held at 13.0.0 because it is the newest that asks for Microsoft.Maui.Controls
+         10.0.10 or lower. Later releases demand 10.0.60+, which drags Controls above the
+         version the installed workload provides and reintroduces the vtable crash.
+         Raise this together with the workload, never on its own. -->
+    <PackageVersion Include="CommunityToolkit.Maui" Version="13.0.0" />
+  </ItemGroup>
+
+  <ItemGroup Label="Testing">
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageVersion Include="xunit.v3" Version="3.0.0" />
+    <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.0" />
+  </ItemGroup>
+
+</Project>

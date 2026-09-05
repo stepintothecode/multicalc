@@ -1,0 +1,59 @@
+@* Pick a format, then hand the file to the system's own save dialog. *@
+
+<Sheet Title="Export history" OnClose="OnClose">
+    <ChildContent>
+        <p class="small muted" style="margin:0 4px 14px">
+            Every calculator's history goes into one file. Nothing leaves the device unless you
+            put it somewhere that syncs.
+        </p>
+
+        <div class="card">
+            @foreach (var option in Options)
+            {
+                <button class="row row-tappable" disabled="@busy" @onclick="() => Export(option.Format)">
+                    <div class="row-text">
+                        <div class="row-title">@option.Title</div>
+                        <div class="row-note">@option.Note</div>
+                    </div>
+                    <Icon Name="export" />
+                </button>
+            }
+        </div>
+    </ChildContent>
+</Sheet>
+
+@code {
+    private sealed record Option(HistoryFormat Format, string Title, string Note);
+
+    private static readonly Option[] Options =
+    [
+        new(HistoryFormat.Text, "Text file", "Readable, for keeping or pasting into a message"),
+        new(HistoryFormat.Csv, "CSV", "One row per calculation, for a spreadsheet"),
+        new(HistoryFormat.Json, "JSON", "Structured, for anything that reads it back"),
+    ];
+
+    private bool busy;
+
+    /// <summary>Raised with the chosen format.</summary>
+    [Parameter, EditorRequired]
+    public EventCallback<HistoryFormat> OnExport { get; set; }
+
+    /// <summary>Raised when the sheet should close.</summary>
+    [Parameter]
+    public EventCallback OnClose { get; set; }
+
+    private async Task Export(HistoryFormat format)
+    {
+        // The save dialog takes a moment. Without this the row can be tapped twice.
+        busy = true;
+
+        try
+        {
+            await OnExport.InvokeAsync(format);
+        }
+        finally
+        {
+            busy = false;
+        }
+    }
+}

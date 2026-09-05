@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- Fakes for tests, not a published API. -->
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\MultiCalc.Abstractions\MultiCalc.Abstractions.csproj" />
+    <ProjectReference Include="..\..\src\MultiCalc.Domain\MultiCalc.Domain.csproj" />
+  </ItemGroup>
+
+</Project>

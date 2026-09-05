@@ -1,0 +1,52 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0-android</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <UseMaui>true</UseMaui>
+    <SingleProject>true</SingleProject>
+    <RootNamespace>MultiCalc.App</RootNamespace>
+
+    <ApplicationTitle>MultiCalc</ApplicationTitle>
+    <ApplicationId>com.stepintothecode.multicalc</ApplicationId>
+    <ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
+    <ApplicationVersion>1</ApplicationVersion>
+
+    <!-- Android 8.0 and up, which is all but a rounding error of phones in use. -->
+    <SupportedOSPlatformVersion>26.0</SupportedOSPlatformVersion>
+
+    <!-- Release ships every architecture a phone might have. A Debug build only ever
+         targets the device that is plugged in, so the ABIs in a Debug APK say nothing
+         about reach: 32 bit ARM is still out there on the older end of minSdk 26. -->
+    <RuntimeIdentifiers Condition="'$(Configuration)' == 'Release'">android-arm;android-arm64;android-x64</RuntimeIdentifiers>
+
+    <!-- App wiring rather than a library, so the repo-wide docs requirement is off here. -->
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\MultiCalc.Abstractions\MultiCalc.Abstractions.csproj" />
+    <ProjectReference Include="..\MultiCalc.Domain\MultiCalc.Domain.csproj" />
+    <ProjectReference Include="..\MultiCalc.Evaluation\MultiCalc.Evaluation.csproj" />
+    <ProjectReference Include="..\MultiCalc.Storage\MultiCalc.Storage.csproj" />
+    <ProjectReference Include="..\MultiCalc.Ui\MultiCalc.Ui.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Both MAUI packages take the version the installed workload provides. They are two
+         halves of one product: resolving them to different versions gives a
+         TypeLoadException on Microsoft.Maui.Controls.Page at startup. -->
+    <PackageReference Include="Microsoft.Maui.Controls" VersionOverride="$(MauiVersion)" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebView.Maui" VersionOverride="$(MauiVersion)" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Debug" />
+    <PackageReference Include="CommunityToolkit.Maui" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Both drawn by tools/make-icons.py. appicon.png is a flat background; the mark
+         lives only in the foreground, because MAUI composites the two. -->
+    <MauiIcon Include="Resources\AppIcon\appicon.png" ForegroundFile="Resources\AppIcon\appiconfg.png" Color="#0B0D10" />
+    <MauiSplashScreen Include="Resources\Splash\splash.png" Color="#0B0D10" BaseSize="180,180" />
+  </ItemGroup>
+
+</Project>

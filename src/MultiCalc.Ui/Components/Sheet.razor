@@ -1,0 +1,39 @@
+@* A bottom sheet. Tapping the scrim or the close button dismisses it. *@
+
+<div class="scrim" @onclick="Close"></div>
+
+<div class="sheet" role="dialog" aria-modal="true" aria-label="@Title">
+    <div class="sheet-grip"></div>
+
+    <div class="sheet-head">
+        <div class="sheet-title">@Title</div>
+        @HeadActions
+        <button class="icon-btn" @onclick="Close" aria-label="Close">
+            <Icon Name="close" />
+        </button>
+    </div>
+
+    <div class="sheet-body">
+        @ChildContent
+    </div>
+</div>
+
+@code {
+    /// <summary>Heading shown at the top of the sheet.</summary>
+    [Parameter, EditorRequired]
+    public string Title { get; set; } = string.Empty;
+
+    /// <summary>The sheet's content.</summary>
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>Optional buttons placed beside the title.</summary>
+    [Parameter]
+    public RenderFragment? HeadActions { get; set; }
+
+    /// <summary>Raised when the sheet should close.</summary>
+    [Parameter]
+    public EventCallback OnClose { get; set; }
+
+    private Task Close() => OnClose.InvokeAsync();
+}

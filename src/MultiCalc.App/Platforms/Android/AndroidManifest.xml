@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+  <application android:allowBackup="true"
+               android:icon="@mipmap/appicon"
+               android:roundIcon="@mipmap/appicon_round"
+               android:supportsRtl="true" />
+
+  <uses-permission android:name="android.permission.VIBRATE" />
+
+  <!-- Android 11 and later hide other apps unless they are declared here, and every one of
+       these blocks earns its place. Without the launcher intent the app cannot see any
+       calculator at all; without the https intent the support link cannot reach a browser. -->
+  <queries>
+
+    <!-- The category Android reserves for calculators. Optional, so plenty of phones skip it. -->
+    <intent>
+      <action android:name="android.intent.action.MAIN" />
+      <category android:name="android.intent.category.APP_CALCULATOR" />
+    </intent>
+
+    <!-- Everything with a launcher icon, so a calculator can be recognised by name on builds
+         that declare neither the category nor a package we know. This is the ordinary
+         intent based visibility, not the QUERY_ALL_PACKAGES permission. -->
+    <intent>
+      <action android:name="android.intent.action.MAIN" />
+      <category android:name="android.intent.category.LAUNCHER" />
+    </intent>
+
+    <intent>
+      <action android:name="android.intent.action.VIEW" />
+      <data android:scheme="https" />
+    </intent>
+
+    <!-- The manufacturer calculators, by name. Samsung's declares only CATEGORY_LAUNCHER,
+         which is exactly why the category block above is not enough on its own. -->
+    <package android:name="com.sec.android.app.popupcalculator" />
+    <package android:name="com.google.android.calculator" />
+    <package android:name="com.android.calculator2" />
+    <package android:name="com.miui.calculator" />
+    <package android:name="com.oneplus.calculator" />
+    <package android:name="com.coloros.calculator" />
+    <package android:name="com.oppo.calculator" />
+    <package android:name="com.realme.calculator" />
+    <package android:name="com.vivo.calculator" />
+    <package android:name="com.bbk.calculator" />
+    <package android:name="com.transsion.calculator" />
+    <package android:name="com.asus.calculator" />
+    <package android:name="com.huawei.calculator" />
+    <package android:name="com.motorola.calculator" />
+    <package android:name="com.htc.calculator" />
+    <package android:name="com.lge.calculator" />
+    <package android:name="com.nothing.calculator" />
+
+  </queries>
+
+</manifest>
