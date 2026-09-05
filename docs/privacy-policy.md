@@ -68,6 +68,7 @@ changes with it.
 
 ## Contact
 
-Questions about this policy: **stepintothecode@gmail.com**
+Questions about this policy:
+[open an issue](https://github.com/stepintothecode/multicalc/issues).
 
 Source code: [github.com/stepintothecode/multicalc](https://github.com/stepintothecode/multicalc)

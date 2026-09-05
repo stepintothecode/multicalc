@@ -61,7 +61,9 @@ calculator name and never overwrites or removes anything, so running it twice is
 - [Architecture](docs/architecture.md), how it fits together
 - [Contributing](CONTRIBUTING.md), layout, tests and conventions
 - [Play listing](docs/play-store-listing.md), everything Play Console asks for
-- [Privacy policy](docs/privacy-policy.md), the source text behind the published page
+- [Privacy policy](https://stepintothecode.github.io/multicalc/privacy/), the published
+  page Google Play points at. Its source text is
+  [docs/privacy-policy.md](docs/privacy-policy.md)
 
 ## Website
 

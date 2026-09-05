@@ -117,9 +117,15 @@ publishing. Supplying tablet screenshots of a portrait phone layout would be wor
 | App or game | App |
 | Category | Tools |
 | Tags | Calculator, Productivity, Utilities |
-| Email address | stepintothecode@gmail.com |
-| Website | https://github.com/stepintothecode/multicalc |
+| Email address | **required by Play, and shown publicly on the listing.** Type it into the Console; it is deliberately not written down in this repository |
+| Website | https://stepintothecode.github.io/multicalc/ |
 | Phone | leave blank, it is optional and becomes public |
+
+Play makes the developer email address mandatory and displays it on the store page, so
+there is no way to ship without one. A forwarding address you can retire later is worth
+considering, since it becomes public the moment the listing does. Nothing else in this
+repository, the app or the privacy policy carries an address: the policy points at GitHub
+issues instead.
 | External marketing | Opt out is fine; it only affects Google promoting the app |
 
 ---

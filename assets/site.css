@@ -41,25 +41,15 @@ body {
   margin: 0 auto;
 }
 
-/* Three stacked calculator bodies, the same idea as the app icon. */
+/* The real app icon, not an approximation of it. A hand drawn stand-in was here first
+   and read as a different logo, which is worse than no logo. */
 .mark {
-  position: relative;
-  width: 54px;
-  height: 54px;
+  display: block;
+  width: 72px;
+  height: 72px;
+  border-radius: 17px;
   margin-bottom: 1.75rem;
 }
-
-.mark i {
-  position: absolute;
-  width: 30px;
-  height: 40px;
-  border-radius: 7px;
-  background: var(--border);
-}
-
-.mark i:nth-child(1) { left: 0; top: 0; }
-.mark i:nth-child(2) { left: 10px; top: 7px; }
-.mark i:nth-child(3) { left: 20px; top: 14px; background: var(--accent); }
 
 h1 {
   margin: 0 0 0.5rem;
