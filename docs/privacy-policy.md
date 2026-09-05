@@ -1,6 +1,11 @@
 # Privacy Policy for MultiCalc
 
-**Last updated: 5 September 2026**
+Last updated: 5 September 2026.
+
+> This is the source text. The page Google Play points at is `privacy/index.html` at the
+> root of the repository, published by GitHub Pages at
+> [stepintothecode.github.io/multicalc/privacy/](https://stepintothecode.github.io/multicalc/privacy/).
+> Change both together.
 
 MultiCalc is made by Step Into The Code. This policy explains what the app does with
 your information. It is short because the app does very little with it.
@@ -65,4 +70,4 @@ changes with it.
 
 Questions about this policy: **stepintothecode@gmail.com**
 
-Source code: <https://github.com/stepintothecode/multicalc>
+Source code: [github.com/stepintothecode/multicalc](https://github.com/stepintothecode/multicalc)

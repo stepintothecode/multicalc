@@ -133,13 +133,29 @@ Every item under Policy, App content. All of these must be green before you can 
 Required for every app, whether or not it collects data.
 
 ```text
-https://stepintothecode.github.io/multicalc/privacy.html
+https://stepintothecode.github.io/multicalc/privacy/
 ```
 
-The page is written and ready at `assets/store/privacy-policy.html`, with the same text
-in `docs/privacy-policy.md`. **Publish it before submitting**: Play checks the URL loads
-and rejects the app if it 404s. Any stable public URL works; GitHub Pages on the
-existing `stepintothecode.github.io` site is the least effort.
+**Note the trailing slash and the absence of a file name.** GitHub Pages serves a repo at
+`https://<user>.github.io/<repo>/` from the repository root, so a page lives at
+`privacy/index.html` and is reached at `/privacy/`. A path like `/privacy.html` only
+works if a file of exactly that name sits at the root.
+
+The pages are in the repository and go live as soon as Pages is pointed at the root of
+the `main` branch:
+
+```text
+.nojekyll            stops Pages running the files through Jekyll
+index.html           the landing page, at /multicalc/
+privacy/index.html   the policy, at /multicalc/privacy/
+assets/site.css      shared styling for both
+```
+
+Same layout as the housie repo, so the two sites behave the same way.
+
+**Publish it before submitting.** Play fetches the URL and rejects the app if it 404s.
+Open it in a browser first: Pages can take a couple of minutes on the first deploy, and
+it returns 404 until then.
 
 ### Ads
 
@@ -288,7 +304,7 @@ No account, no ads, no internet permission. Everything stays on your phone.
 
 ## 6. Before you press publish
 
-- [ ] Privacy policy URL is live and loads
+- [ ] `https://stepintothecode.github.io/multicalc/privacy/` opens in a browser
 - [ ] Release bundle installed and opened on a real phone, not just the Debug build
 - [ ] `ApplicationVersion` raised
 - [ ] Upload keystore backed up somewhere you will not lose it

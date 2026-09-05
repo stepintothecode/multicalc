@@ -61,7 +61,22 @@ calculator name and never overwrites or removes anything, so running it twice is
 - [Architecture](docs/architecture.md), how it fits together
 - [Contributing](CONTRIBUTING.md), layout, tests and conventions
 - [Play listing](docs/play-store-listing.md), everything Play Console asks for
-- [Privacy policy](docs/privacy-policy.md), the page that has to be published before release
+- [Privacy policy](docs/privacy-policy.md), the source text behind the published page
+
+## Website
+
+GitHub Pages serves this repository's root, so the landing page and the privacy policy
+live alongside the code:
+
+```text
+.nojekyll            stops Pages running the files through Jekyll
+index.html           https://stepintothecode.github.io/multicalc/
+privacy/index.html   https://stepintothecode.github.io/multicalc/privacy/
+assets/site.css      shared styling for both
+```
+
+Point Pages at the `main` branch, folder `/ (root)`. Google Play needs that privacy URL
+live before it will accept the app.
 
 ## Licence
 

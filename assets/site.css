@@ -1,0 +1,159 @@
+/* The published pages: the landing page and the privacy policy.
+   Same palette as the app, so the three feel like one thing. */
+
+:root {
+  --bg: #0b0d10;
+  --surface: #13171c;
+  --border: #242a32;
+  --text: #eceff3;
+  --muted: #8b95a1;
+  --accent: #23c6aa;
+  --ink: #04221d;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #ffffff;
+    --surface: #f3f5f7;
+    --border: #dde4ea;
+    --text: #10151a;
+    --muted: #5d6874;
+    --accent: #007a68;
+    --ink: #ffffff;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 3rem 1.25rem 5rem;
+  background: var(--bg);
+  color: var(--text);
+  font: 16px/1.65 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  -webkit-text-size-adjust: 100%;
+}
+
+.wrap {
+  max-width: 44rem;
+  margin: 0 auto;
+}
+
+/* Three stacked calculator bodies, the same idea as the app icon. */
+.mark {
+  position: relative;
+  width: 54px;
+  height: 54px;
+  margin-bottom: 1.75rem;
+}
+
+.mark i {
+  position: absolute;
+  width: 30px;
+  height: 40px;
+  border-radius: 7px;
+  background: var(--border);
+}
+
+.mark i:nth-child(1) { left: 0; top: 0; }
+.mark i:nth-child(2) { left: 10px; top: 7px; }
+.mark i:nth-child(3) { left: 20px; top: 14px; background: var(--accent); }
+
+h1 {
+  margin: 0 0 0.5rem;
+  font-size: clamp(1.75rem, 5vw, 2.5rem);
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+}
+
+h2 {
+  margin: 2.5rem 0 0.75rem;
+  font-size: 1.1rem;
+  letter-spacing: -0.01em;
+}
+
+.lede {
+  color: var(--muted);
+  font-size: 1.05rem;
+  margin: 0 0 2rem;
+}
+
+p,
+li {
+  color: var(--text);
+}
+
+ul {
+  padding-left: 1.15rem;
+}
+
+li {
+  margin-bottom: 0.4rem;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 1.25rem 1.5rem;
+  margin: 1.5rem 0;
+}
+
+.card p:first-child {
+  margin-top: 0;
+}
+
+.card p:last-child {
+  margin-bottom: 0;
+}
+
+code {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 0.1em 0.4em;
+  font-size: 0.9em;
+}
+
+a {
+  color: var(--accent);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+.btn {
+  display: inline-block;
+  margin: 0.4rem 0.5rem 0.4rem 0;
+  padding: 0.7rem 1.15rem;
+  border-radius: 12px;
+  background: var(--accent);
+  color: var(--ink);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.btn.ghost {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+.updated {
+  color: var(--muted);
+  font-size: 0.875rem;
+  margin: -0.25rem 0 2rem;
+}
+
+footer {
+  margin-top: 3.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+footer a {
+  color: var(--muted);
+}
