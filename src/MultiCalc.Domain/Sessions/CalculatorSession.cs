@@ -15,6 +15,7 @@ public sealed record CalculatorSession
         string id,
         string name,
         CalculatorTint tint,
+        bool scientific,
         ExpressionDraft draft,
         string? lastResult,
         IReadOnlyList<CalculationEntry> history,
@@ -23,6 +24,7 @@ public sealed record CalculatorSession
         Id = id;
         Name = name;
         Tint = tint;
+        Scientific = scientific;
         Draft = draft;
         LastResult = lastResult;
         History = history;
@@ -37,6 +39,9 @@ public sealed record CalculatorSession
 
     /// <summary>The tag colour, so this calculator is recognisable without reading its name.</summary>
     public CalculatorTint Tint { get; }
+
+    /// <summary>Whether this calculator shows the scientific keys.</summary>
+    public bool Scientific { get; }
 
     /// <summary>What is currently typed.</summary>
     public ExpressionDraft Draft { get; }
@@ -59,8 +64,9 @@ public sealed record CalculatorSession
         string id,
         string name,
         DateTimeOffset createdAt,
-        CalculatorTint? tint = null) =>
-        new(id, name, tint ?? CalculatorTint.Default, ExpressionDraft.Empty, null, [], createdAt);
+        CalculatorTint? tint = null,
+        bool scientific = false) =>
+        new(id, name, tint ?? CalculatorTint.Default, scientific, ExpressionDraft.Empty, null, [], createdAt);
 
     /// <summary>Rebuilds a session from stored values.</summary>
     public static CalculatorSession Restore(
@@ -70,11 +76,13 @@ public sealed record CalculatorSession
         string? lastResult,
         IReadOnlyList<CalculationEntry> history,
         DateTimeOffset createdAt,
-        CalculatorTint? tint = null) =>
+        CalculatorTint? tint = null,
+        bool scientific = false) =>
         new(
             id,
             name,
             tint ?? CalculatorTint.Default,
+            scientific,
             ExpressionDraft.FromExpression(expression),
             lastResult,
             history,
@@ -88,17 +96,24 @@ public sealed record CalculatorSession
     /// </para>
     /// </summary>
     public CalculatorSession WithDraft(ExpressionDraft draft) =>
-        new(Id, Name, Tint, draft, null, History, CreatedAt);
+        new(Id, Name, Tint, Scientific, draft, null, History, CreatedAt);
 
     /// <summary>Returns a copy with a different name. A blank name is ignored.</summary>
     public CalculatorSession Rename(string name) =>
         string.IsNullOrWhiteSpace(name)
             ? this
-            : new CalculatorSession(Id, name.Trim(), Tint, Draft, LastResult, History, CreatedAt);
+            : new CalculatorSession(Id, name.Trim(), Tint, Scientific, Draft, LastResult, History, CreatedAt);
 
     /// <summary>Returns a copy tagged with a different colour.</summary>
     public CalculatorSession WithTint(CalculatorTint tint) =>
-        new(Id, Name, tint, Draft, LastResult, History, CreatedAt);
+        new(Id, Name, tint, Scientific, Draft, LastResult, History, CreatedAt);
+
+    /// <summary>
+    /// Returns a copy showing or hiding the scientific keys. Per calculator, so a scratch
+    /// pad can stay simple while the one next to it does trigonometry.
+    /// </summary>
+    public CalculatorSession WithScientific(bool scientific) =>
+        new(Id, Name, Tint, scientific, Draft, LastResult, History, CreatedAt);
 
     /// <summary>
     /// Records a finished calculation: the result becomes the new draft so it can be
@@ -110,12 +125,12 @@ public sealed record CalculatorSession
         history.AddRange(History.Count > HistoryLimit - 1 ? History.Take(HistoryLimit - 1) : History);
 
         return new CalculatorSession(
-            Id, Name, Tint, ExpressionDraft.FromValue(value), entry.Result, history, CreatedAt);
+            Id, Name, Tint, Scientific, ExpressionDraft.FromValue(value), entry.Result, history, CreatedAt);
     }
 
     /// <summary>Returns a copy with an empty history. The current draft is left alone.</summary>
     public CalculatorSession WithoutHistory() =>
-        new(Id, Name, Tint, Draft, LastResult, [], CreatedAt);
+        new(Id, Name, Tint, Scientific, Draft, LastResult, [], CreatedAt);
 
     /// <summary>
     /// Returns a copy carrying a different history, for restoring an import. The draft and
@@ -123,5 +138,5 @@ public sealed record CalculatorSession
     /// the one in progress.
     /// </summary>
     public CalculatorSession WithHistory(IReadOnlyList<CalculationEntry> history) =>
-        new(Id, Name, Tint, Draft, LastResult, history, CreatedAt);
+        new(Id, Name, Tint, Scientific, Draft, LastResult, history, CreatedAt);
 }

@@ -1,5 +1,6 @@
 using MultiCalc.Abstractions;
 using NCalc;
+using NCalc.Handlers;
 
 namespace MultiCalc.Evaluation;
 
@@ -9,10 +10,20 @@ namespace MultiCalc.Evaluation;
 /// </summary>
 public sealed class NCalcCalculatorEngine : ICalculatorEngine
 {
-    private const ExpressionOptions Options = ExpressionOptions.DecimalAsDefault;
+    private const double DegreesPerRadian = 180.0 / Math.PI;
+
+    private const ExpressionOptions Options =
+        ExpressionOptions.DecimalAsDefault | ExpressionOptions.IgnoreCaseAtBuiltInFunctions;
+
+    /// <summary>
+    /// The six trigonometric functions, taken over from NCalc so the angle mode can be
+    /// honoured. Everything else NCalc provides is left alone.
+    /// </summary>
+    private static readonly string[] Trigonometric =
+        ["sin", "cos", "tan", "asin", "acos", "atan"];
 
     /// <inheritdoc />
-    public EvaluationOutcome Evaluate(string expression)
+    public EvaluationOutcome Evaluate(string expression, AngleMode angles = AngleMode.Degrees)
     {
         if (string.IsNullOrWhiteSpace(expression))
         {
@@ -21,7 +32,10 @@ public sealed class NCalcCalculatorEngine : ICalculatorEngine
 
         try
         {
-            return Convert(new Expression(expression, Options).Evaluate());
+            var parsed = new Expression(expression, Options);
+            parsed.EvaluateFunction += (name, args) => Trigonometry(name, args, angles);
+
+            return Convert(parsed.Evaluate());
         }
         catch (DivideByZeroException)
         {
@@ -38,6 +52,39 @@ public sealed class NCalcCalculatorEngine : ICalculatorEngine
             // syntax problem as far as the person typing is concerned.
             return EvaluationOutcome.Failure(EvaluationError.Syntax);
         }
+    }
+
+    /// <summary>
+    /// Handles the trigonometric functions so degrees work. NCalc's own take radians, and
+    /// a calculator that answered 0.0175 for sin(1) would be wrong for most people.
+    /// </summary>
+    private static void Trigonometry(string name, FunctionEventArgs args, AngleMode angles)
+    {
+        if (!Trigonometric.Contains(name, StringComparer.OrdinalIgnoreCase) || args.Parameters.Count != 1)
+        {
+            return;
+        }
+
+        var value = System.Convert.ToDouble(args.Parameters.Evaluate(0), null);
+        var inDegrees = angles == AngleMode.Degrees;
+        var isInverse = name.StartsWith('a') || name.StartsWith('A');
+
+        // Forward functions take an angle, so degrees are converted going in.
+        // Inverse functions return one, so they are converted coming out.
+        var argument = inDegrees && !isInverse ? value / DegreesPerRadian : value;
+
+        var result = name.ToLowerInvariant() switch
+        {
+            "sin" => Math.Sin(argument),
+            "cos" => Math.Cos(argument),
+            "tan" => Math.Tan(argument),
+            "asin" => Math.Asin(argument),
+            "acos" => Math.Acos(argument),
+            "atan" => Math.Atan(argument),
+            _ => double.NaN,
+        };
+
+        args.Result = inDegrees && isInverse ? result * DegreesPerRadian : result;
     }
 
     private static EvaluationOutcome Convert(object? raw) => raw switch
@@ -71,6 +118,8 @@ public sealed class NCalcCalculatorEngine : ICalculatorEngine
             return EvaluationOutcome.Failure(EvaluationError.Overflow);
         }
 
-        return EvaluationOutcome.Success((decimal)value);
+        // Trigonometry lands a hair off a round number, and "0.9999999999999999" for cos(0)
+        // reads as a bug. Fifteen places is well inside double's honest precision.
+        return EvaluationOutcome.Success(Math.Round((decimal)value, 15));
     }
 }

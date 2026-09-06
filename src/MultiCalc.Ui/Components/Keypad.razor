@@ -4,56 +4,129 @@
 @* The keys. Layout is fixed on purpose: muscle memory beats configurability on a
    calculator.
 
+   Both pads live inside one container so keypad.js attaches once and a finger can slide
+   from any key to any other. CSS decides whether the scientific pad sits above the
+   numbers or beside them.
+
    Presses normally come from keypad.js, so a key fires as the finger lands and again as
    it slides onto the next one. The @@onclick handlers are the path for a keyboard or a
    screen reader, and the whole keypad's safety net if the script ever fails to attach. *@
 
-<div class="keypad" role="group" aria-label="Keypad" @ref="root">
-    <button class="key key-clear" data-key="Clear" aria-label="Clear"
-            @onclick="e => Clicked(e, nameof(CalculatorKey.Clear))">AC</button>
+<div class="pads @(Scientific ? "is-sci" : string.Empty)" @ref="root">
 
-    <button class="key key-fn" data-key="Backspace" aria-label="Backspace"
-            @onclick="e => Clicked(e, nameof(CalculatorKey.Backspace))">
-        <Icon Name="backspace" />
-    </button>
+    <div class="sci-pad" role="group" aria-label="Scientific keys">
+        <button class="key key-mode @(inverse ? "is-on" : string.Empty)" data-key="Inv"
+                aria-pressed="@inverse" aria-label="Inverse functions"
+                @onclick="e => Clicked(e, InverseKey)">INV</button>
 
-    <button class="key key-fn" data-key="Brackets" aria-label="Brackets"
-            @onclick="e => Clicked(e, BracketsKey)">( )</button>
+        <button class="key key-mode" data-key="Angles"
+                aria-label="Switch between degrees and radians"
+                @onclick="e => Clicked(e, AnglesKey)">@(Angles == AngleMode.Degrees ? "DEG" : "RAD")</button>
 
-    <button class="key key-fn" data-key="Percent" aria-label="Percent"
-            @onclick="e => Clicked(e, nameof(CalculatorKey.Percent))">%</button>
+        <button class="key key-fn" data-key="SquareRoot" aria-label="Square root"
+                @onclick="e => Clicked(e, nameof(CalculatorKey.SquareRoot))">√</button>
 
-    @foreach (var row in DigitRows)
-    {
-        @foreach (var digit in row.Digits)
+        <button class="key key-fn" data-key="AbsoluteValue" aria-label="Absolute value"
+                @onclick="e => Clicked(e, nameof(CalculatorKey.AbsoluteValue))">|x|</button>
+
+        <button class="key key-fn" data-key="@(inverse ? "ArcSine" : "Sine")" aria-label="Sine"
+                @onclick="e => Clicked(e, inverse ? nameof(CalculatorKey.ArcSine) : nameof(CalculatorKey.Sine))">
+            @(inverse ? "sin⁻¹" : "sin")
+        </button>
+
+        <button class="key key-fn" data-key="@(inverse ? "ArcCosine" : "Cosine")" aria-label="Cosine"
+                @onclick="e => Clicked(e, inverse ? nameof(CalculatorKey.ArcCosine) : nameof(CalculatorKey.Cosine))">
+            @(inverse ? "cos⁻¹" : "cos")
+        </button>
+
+        <button class="key key-fn" data-key="@(inverse ? "ArcTangent" : "Tangent")" aria-label="Tangent"
+                @onclick="e => Clicked(e, inverse ? nameof(CalculatorKey.ArcTangent) : nameof(CalculatorKey.Tangent))">
+            @(inverse ? "tan⁻¹" : "tan")
+        </button>
+
+        <button class="key key-fn" data-key="Pi" aria-label="Pi"
+                @onclick="e => Clicked(e, nameof(CalculatorKey.Pi))">π</button>
+
+        <button class="key key-fn" data-key="NaturalLog" aria-label="Natural logarithm"
+                @onclick="e => Clicked(e, nameof(CalculatorKey.NaturalLog))">ln</button>
+
+        <button class="key key-fn" data-key="Log10" aria-label="Logarithm base ten"
+                @onclick="e => Clicked(e, nameof(CalculatorKey.Log10))">log</button>
+
+        <button class="key key-fn" data-key="Reciprocal" aria-label="Reciprocal"
+                @onclick="e => Clicked(e, nameof(CalculatorKey.Reciprocal))">1/x</button>
+
+        <button class="key key-fn" data-key="Euler" aria-label="Euler's number"
+                @onclick="e => Clicked(e, nameof(CalculatorKey.Euler))">e</button>
+
+        <button class="key key-fn" data-key="Exponential" aria-label="e to the power of"
+                @onclick="e => Clicked(e, nameof(CalculatorKey.Exponential))"><span>e<sup>x</sup></span></button>
+
+        <button class="key key-fn" data-key="Square" aria-label="Squared"
+                @onclick="e => Clicked(e, nameof(CalculatorKey.Square))"><span>x<sup>2</sup></span></button>
+
+        <button class="key key-fn" data-key="Power" aria-label="To the power of"
+                @onclick="e => Clicked(e, nameof(CalculatorKey.Power))"><span>x<sup>y</sup></span></button>
+
+        <button class="key key-fn" data-key="PowerOfTen" aria-label="Ten to the power of"
+                @onclick="e => Clicked(e, nameof(CalculatorKey.PowerOfTen))"><span>10<sup>x</sup></span></button>
+    </div>
+
+    <div class="num-pad" role="group" aria-label="Keypad">
+        <button class="key key-clear" data-key="Clear" aria-label="Clear"
+                @onclick="e => Clicked(e, nameof(CalculatorKey.Clear))">AC</button>
+
+        <button class="key key-fn" data-key="Backspace" aria-label="Backspace"
+                @onclick="e => Clicked(e, nameof(CalculatorKey.Backspace))">
+            <Icon Name="backspace" />
+        </button>
+
+        <button class="key key-fn" data-key="Brackets" aria-label="Brackets"
+                @onclick="e => Clicked(e, BracketsKey)">( )</button>
+
+        <button class="key key-fn" data-key="Percent" aria-label="Percent"
+                @onclick="e => Clicked(e, nameof(CalculatorKey.Percent))">%</button>
+
+        @foreach (var row in DigitRows)
         {
-            <button class="key" data-key="@digit.Key"
-                    @onclick="e => Clicked(e, digit.Key.ToString())">@digit.Label</button>
+            @foreach (var digit in row.Digits)
+            {
+                <button class="key" data-key="@digit.Key"
+                        @onclick="e => Clicked(e, digit.Key.ToString())">@digit.Label</button>
+            }
+
+            <button class="key key-op" data-key="@row.Operator.Key" aria-label="@row.Operator.Label"
+                    @onclick="e => Clicked(e, row.Operator.Key.ToString())">
+                @row.Operator.Glyph
+            </button>
         }
 
-        <button class="key key-op" data-key="@row.Operator.Key" aria-label="@row.Operator.Label"
-                @onclick="e => Clicked(e, row.Operator.Key.ToString())">
-            @row.Operator.Glyph
-        </button>
-    }
+        <button class="key key-fn" data-key="ToggleSign" aria-label="Change sign"
+                @onclick="e => Clicked(e, nameof(CalculatorKey.ToggleSign))">+/−</button>
 
-    <button class="key key-fn" data-key="ToggleSign" aria-label="Change sign"
-            @onclick="e => Clicked(e, nameof(CalculatorKey.ToggleSign))">+/−</button>
+        <button class="key" data-key="Zero"
+                @onclick="e => Clicked(e, nameof(CalculatorKey.Zero))">0</button>
 
-    <button class="key" data-key="Zero"
-            @onclick="e => Clicked(e, nameof(CalculatorKey.Zero))">0</button>
+        <button class="key" data-key="Decimal" aria-label="Decimal point"
+                @onclick="e => Clicked(e, nameof(CalculatorKey.Decimal))">.</button>
 
-    <button class="key" data-key="Decimal" aria-label="Decimal point"
-            @onclick="e => Clicked(e, nameof(CalculatorKey.Decimal))">.</button>
+        <button class="key key-op" data-key="Add" aria-label="Add"
+                @onclick="e => Clicked(e, nameof(CalculatorKey.Add))">+</button>
 
-    <button class="key key-op" data-key="Add" aria-label="Add"
-            @onclick="e => Clicked(e, nameof(CalculatorKey.Add))">+</button>
+        <button class="key key-equals key-wide" data-key="Equals" aria-label="Equals"
+                @onclick="e => Clicked(e, EqualsKey)">=</button>
+    </div>
 
-    <button class="key key-equals key-wide" data-key="Equals" aria-label="Equals"
-            @onclick="e => Clicked(e, EqualsKey)">=</button>
 </div>
 
 @code {
+    /// <summary>Keys that are not a plain <see cref="CalculatorKey"/>.</summary>
+    private const string BracketsKey = "Brackets";
+
+    private const string EqualsKey = "Equals";
+    private const string InverseKey = "Inv";
+    private const string AnglesKey = "Angles";
+
     private sealed record Digit(CalculatorKey Key, string Label);
 
     private sealed record Operator(CalculatorKey Key, string Glyph, string Label);
@@ -70,14 +143,10 @@
             new(CalculatorKey.Subtract, "−", "Subtract")),
     ];
 
-    /// <summary>The two keys that are not a plain <see cref="CalculatorKey"/>.</summary>
-    private const string BracketsKey = "Brackets";
-
-    private const string EqualsKey = "Equals";
-
     private ElementReference root;
     private DotNetObjectReference<Keypad>? self;
     private bool pointerHandled;
+    private bool inverse;
 
     /// <summary>Raised for every key except equals.</summary>
     [Parameter, EditorRequired]
@@ -90,6 +159,18 @@
     /// <summary>What is currently typed, used to decide which bracket the one key sends.</summary>
     [Parameter]
     public ExpressionDraft Draft { get; set; } = ExpressionDraft.Empty;
+
+    /// <summary>Whether the scientific pad shows in portrait. It always shows in landscape.</summary>
+    [Parameter]
+    public bool Scientific { get; set; }
+
+    /// <summary>What the trigonometric keys measure in.</summary>
+    [Parameter]
+    public AngleMode Angles { get; set; }
+
+    /// <summary>Raised when the degrees and radians key is pressed.</summary>
+    [Parameter]
+    public EventCallback<AngleMode> AnglesChanged { get; set; }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -128,12 +209,22 @@
     {
         switch (key)
         {
-            case "Equals":
+            case EqualsKey:
                 await OnEquals.InvokeAsync();
                 break;
 
-            case "Brackets":
+            case BracketsKey:
                 await OnKey.InvokeAsync(WhichBracket());
+                break;
+
+            case InverseKey:
+                inverse = !inverse;
+                StateHasChanged();
+                break;
+
+            case AnglesKey:
+                await AnglesChanged.InvokeAsync(
+                    Angles == AngleMode.Degrees ? AngleMode.Radians : AngleMode.Degrees);
                 break;
 
             default:

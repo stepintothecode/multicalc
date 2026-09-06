@@ -111,6 +111,128 @@ public sealed class CalculatorStateTests
     }
 
     [Fact]
+    public void The_answer_appears_while_the_expression_is_still_being_typed()
+    {
+        var h = Build();
+
+        Type(h.State, CalculatorKey.Two, CalculatorKey.Add, CalculatorKey.Three);
+
+        Assert.Equal("5", h.State.Preview);
+    }
+
+    [Fact]
+    public void The_running_answer_follows_every_key()
+    {
+        var h = Build();
+
+        Type(h.State, CalculatorKey.Two, CalculatorKey.Multiply, CalculatorKey.Three);
+        Assert.Equal("6", h.State.Preview);
+
+        Type(h.State, CalculatorKey.Zero);
+        Assert.Equal("60", h.State.Preview);
+
+        Type(h.State, CalculatorKey.Backspace);
+        Assert.Equal("6", h.State.Preview);
+    }
+
+    [Fact]
+    public void There_is_no_running_answer_midway_through_typing_or_after_equals()
+    {
+        var h = Build();
+
+        Type(h.State, CalculatorKey.Two, CalculatorKey.Add);
+        Assert.Null(h.State.Preview);
+
+        Type(h.State, CalculatorKey.Three);
+        h.State.Evaluate();
+
+        // The answer is on the expression line now, so repeating it below would be noise.
+        Assert.Null(h.State.Preview);
+    }
+
+    [Fact]
+    public void Each_calculator_has_its_own_running_answer()
+    {
+        var h = Build();
+
+        Type(h.State, CalculatorKey.Two, CalculatorKey.Add, CalculatorKey.Three);
+        h.State.AddInApp();
+
+        Assert.Null(h.State.Preview);
+
+        Type(h.State, CalculatorKey.Four, CalculatorKey.Add, CalculatorKey.Four);
+
+        Assert.Equal("8", h.State.Preview);
+    }
+
+    [Fact]
+    public void An_edit_in_the_display_becomes_the_expression()
+    {
+        var h = Build();
+
+        h.State.Edit("1,234×5", 7);
+
+        Assert.Equal("1234*5", h.State.Active.Draft.Expression);
+        Assert.Equal(6, h.State.Active.Draft.Caret);
+        Assert.Equal("6,170", h.State.Preview);
+    }
+
+    [Fact]
+    public void A_paste_of_something_that_is_not_a_sum_leaves_only_what_could_be_one()
+    {
+        var h = Build();
+
+        h.State.Edit("about 12 apples", 0);
+
+        Assert.Equal("12", h.State.Active.Draft.Expression);
+    }
+
+    [Fact]
+    public void Moving_the_caret_puts_the_next_key_where_it_was_put()
+    {
+        var h = Build();
+
+        Type(h.State, CalculatorKey.One, CalculatorKey.Two, CalculatorKey.Add, CalculatorKey.Three);
+
+        // Between the "1" and the "2", counted in what the display shows.
+        h.State.MoveCaret(1);
+        Type(h.State, CalculatorKey.Nine);
+
+        Assert.Equal("192+3", h.State.Active.Draft.Expression);
+    }
+
+    [Fact]
+    public void The_caret_is_counted_in_the_displayed_text_separators_and_all()
+    {
+        var h = Build();
+
+        h.State.Edit("1234+5", 6);
+
+        // The display reads "1,234+5", so screen offset 5 is after the last grouped digit.
+        h.State.MoveCaret(5);
+        Type(h.State, CalculatorKey.Nine);
+
+        Assert.Equal("12349+5", h.State.Active.Draft.Expression);
+    }
+
+    [Fact]
+    public void Each_finished_calculation_stamps_the_display()
+    {
+        var h = Build();
+
+        Assert.Equal(0, h.State.ResultStamp);
+
+        Type(h.State, CalculatorKey.Two, CalculatorKey.Add, CalculatorKey.Three);
+        h.State.Evaluate();
+        Assert.Equal(1, h.State.ResultStamp);
+
+        // A failure is not an answer landing, so it must not animate one.
+        Type(h.State, CalculatorKey.Divide, CalculatorKey.Zero);
+        h.State.Evaluate();
+        Assert.Equal(1, h.State.ResultStamp);
+    }
+
+    [Fact]
     public void The_next_key_press_clears_the_message()
     {
         var h = Build();
@@ -355,6 +477,65 @@ public sealed class CalculatorStateTests
         h.State.ClearAllHistory();
 
         Assert.All(h.State.Book.Sessions, session => Assert.Empty(session.History));
+    }
+
+    [Fact]
+    public void The_scientific_keys_belong_to_one_calculator_not_all_of_them()
+    {
+        var h = Build();
+
+        var first = h.State.Active.Id;
+        h.State.ToggleScientific(first);
+        h.State.AddInApp();
+
+        Assert.True(h.State.Book.Sessions.First(s => s.Id == first).Scientific);
+        Assert.False(h.State.Active.Scientific);
+    }
+
+    [Fact]
+    public void Scientific_calculations_go_through_the_whole_stack()
+    {
+        var h = Build();
+
+        Type(h.State, CalculatorKey.Sine, CalculatorKey.Three, CalculatorKey.Zero);
+        h.State.Evaluate();
+
+        // sin(30) in degrees, which is what a calculator answers by default.
+        Assert.Equal("0.5", h.State.Active.LastResult);
+    }
+
+    [Fact]
+    public void A_square_root_reads_the_way_it_is_written()
+    {
+        var h = Build();
+
+        Type(h.State, CalculatorKey.SquareRoot, CalculatorKey.Nine);
+        Assert.Equal("sqrt(9", h.State.Active.Draft.Expression);
+
+        h.State.Evaluate();
+        Assert.Equal("3", h.State.Active.LastResult);
+    }
+
+    [Fact]
+    public void Powers_work_from_the_keypad()
+    {
+        var h = Build();
+
+        Type(h.State, CalculatorKey.Two, CalculatorKey.Power, CalculatorKey.One, CalculatorKey.Zero);
+        h.State.Evaluate();
+
+        Assert.Equal("1,024", h.State.Active.LastResult);
+    }
+
+    [Fact]
+    public void Importing_restores_the_scientific_setting()
+    {
+        // Covered end to end in the import tests; this pins the state layer's part of it.
+        var h = Build();
+
+        h.State.ToggleScientific(h.State.Active.Id);
+
+        Assert.True(h.State.Active.Scientific);
     }
 
     [Fact]

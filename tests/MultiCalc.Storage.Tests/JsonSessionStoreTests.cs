@@ -75,6 +75,23 @@ public sealed class JsonSessionStoreTests
     }
 
     [Fact]
+    public async Task The_scientific_setting_survives_a_restart()
+    {
+        using var directory = new TempDirectory();
+        var store = new JsonSessionStore(directory.Path);
+
+        var book = SessionBook.Start("a", At);
+        await store.SaveAsync(
+            book.Replace(book.Active.WithScientific(true)),
+            TestContext.Current.CancellationToken);
+
+        var loaded = await store.LoadAsync(TestContext.Current.CancellationToken);
+
+        Assert.NotNull(loaded);
+        Assert.True(loaded.Active.Scientific);
+    }
+
+    [Fact]
     public async Task Sessions_saved_before_colours_existed_still_load()
     {
         using var directory = new TempDirectory();

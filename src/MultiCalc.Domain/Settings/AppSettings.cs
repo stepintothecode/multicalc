@@ -1,3 +1,5 @@
+using MultiCalc.Abstractions;
+
 namespace MultiCalc.Domain.Settings;
 
 /// <summary>
@@ -11,6 +13,12 @@ public sealed record AppSettings
 
     /// <summary>Whether keys give a short vibration.</summary>
     public bool HapticFeedback { get; init; } = true;
+
+    /// <summary>
+    /// What the trigonometric keys measure in. App wide rather than per calculator,
+    /// because it is a unit you work in, not a layout you choose.
+    /// </summary>
+    public AngleMode Angles { get; init; } = AngleMode.Degrees;
 
     /// <summary>The settings a fresh install starts with.</summary>
     public static AppSettings Default { get; } = new();

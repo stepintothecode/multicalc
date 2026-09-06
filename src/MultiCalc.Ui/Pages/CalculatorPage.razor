@@ -1,12 +1,14 @@
 @page "/"
 @implements IDisposable
 @inject CalculatorState State
+@inject SettingsState Settings
 @inject ToastService Toast
 @inject BackNavigation Back
 @inject NavigationManager Nav
 @inject IExternalBrowser Browser
 
-<div class="app">
+@* is-sci on the shell too, so the display can give the extra four rows their room. *@
+<div class="app @(State.Active.Scientific ? "is-sci" : string.Empty)">
 
     <div class="topbar">
         @* Tinted with the active calculator's colour, so which one is open reads at a
@@ -19,6 +21,14 @@
             <Icon Name="chevron-down" />
         </button>
 
+        @* Per calculator, not app wide: a scratch pad can stay simple while the one next
+           to it does trigonometry. *@
+        <button class="icon-btn @(State.Active.Scientific ? "is-on" : string.Empty)"
+                @onclick="() => State.ToggleScientific(State.Active.Id)"
+                aria-pressed="@State.Active.Scientific" aria-label="Scientific keys">
+            <Icon Name="science" />
+        </button>
+
         <button class="icon-btn" @onclick="() => Open(SheetKind.History)" aria-label="History">
             <Icon Name="history" />
         </button>
@@ -29,9 +39,12 @@
     </div>
 
     <div class="stage" @onpointerdown="StartSwipe" @onpointerup="EndSwipe" @onpointercancel="CancelSwipe">
-        <div class="expression @(State.Active.Draft.IsEmpty ? "is-placeholder" : string.Empty)">
-            <span class="expression-inner">@DisplayText</span>
-        </div>
+        <ExpressionField Draft="State.Active.Draft"
+                         OnEdit="Edited"
+                         OnCaret="State.MoveCaret"
+                         OnEnter="State.Evaluate"
+                         Stamp="State.ResultStamp"
+                         Landed="State.Active.LastResult is not null" />
 
         <div class="result @(State.ErrorMessage is not null ? "is-error" : string.Empty)">
             @ResultText
@@ -47,18 +60,39 @@
             </span>
         </button>
 
-        <button class="newbtn newbtn-phone @(State.NativeStatus.CanSpawn ? string.Empty : "is-off")"
-                disabled="@(!State.NativeStatus.CanSpawn)"
-                @onclick="AddNative">
-            <Icon Name="calc-phone" />
-            <span class="newbtn-text">
-                <span class="newbtn-title">Phone calculator</span>
-                <span class="newbtn-note">@(State.NativeStatus.CanSpawn ? "Opens in Recents" : "Not on this phone")</span>
-            </span>
-        </button>
+        @if (State.NativeStatus.CanSpawn)
+        {
+            <button class="newbtn newbtn-phone" @onclick="AddNative">
+                <Icon Name="calc-phone" />
+                <span class="newbtn-text">
+                    <span class="newbtn-title">Phone calculator</span>
+                    <span class="newbtn-note">Opens in Recents</span>
+                </span>
+            </button>
+        }
+        else
+        {
+            @* Not a button, because it does nothing. The "i" beside it is the only thing
+               here that can be pressed, and it says why the rest cannot. *@
+            <div class="newbtn newbtn-phone is-off">
+                <Icon Name="calc-phone" />
+                <span class="newbtn-text">
+                    <span class="newbtn-title">Phone calculator</span>
+                    <span class="newbtn-note">Not on this device</span>
+                </span>
+
+                <button class="newbtn-info" @onclick="() => Open(SheetKind.Unsupported)"
+                        aria-label="Why this is unavailable">i</button>
+            </div>
+        }
     </div>
 
-    <Keypad Draft="State.Active.Draft" OnKey="State.Press" OnEquals="State.Evaluate" />
+    <Keypad Draft="State.Active.Draft"
+            OnKey="State.Press"
+            OnEquals="State.Evaluate"
+            Scientific="State.Active.Scientific"
+            Angles="Settings.Current.Angles"
+            AnglesChanged="SetAngles" />
 
 </div>
 
@@ -73,6 +107,20 @@
                       OnReuse="State.Reuse"
                       OnClear="ClearHistory"
                       OnClose="CloseSheet" />
+        break;
+
+    case SheetKind.Unsupported:
+        <Note Title="Phone calculator" OnClose="CloseSheet">
+            <p>
+                This device will not open a second copy of its own calculator. That is the
+                phone's decision rather than something this app can change, and another
+                Android phone may well allow it.
+            </p>
+            <p>
+                Nothing else is affected: <strong>In this app</strong> opens as many
+                calculators as you need, each with its own display and its own history.
+            </p>
+        </Note>
         break;
 
     case SheetKind.Menu:
@@ -115,6 +163,7 @@
         Instances,
         History,
         Menu,
+        Unsupported,
     }
 
     private SheetKind sheet = SheetKind.None;
@@ -124,6 +173,7 @@
     protected override void OnInitialized()
     {
         State.Changed += Repaint;
+        Settings.Changed += Repaint;
 
         // Back closes an open sheet. With nothing open it is not ours, so the app closes.
         backHandler = Back.Register(() =>
@@ -140,15 +190,13 @@
         });
     }
 
-    private string DisplayText
-    {
-        get
-        {
-            var typed = State.Active.Draft.ToDisplay();
-            return typed.Length > 0 ? typed : "0";
-        }
-    }
+    private void Edited(DisplayEdit edit) => State.Edit(edit.Text, edit.Caret);
 
+    /// <summary>
+    /// The line under the expression: what is wrong, or what the expression comes to as it
+    /// is typed. Pressing equals moves that answer up onto the expression line, and this
+    /// line goes quiet rather than repeating it.
+    /// </summary>
     private string ResultText
     {
         get
@@ -158,7 +206,7 @@
                 return State.ErrorMessage;
             }
 
-            return State.Active.LastResult is { } last ? $"= {last}" : string.Empty;
+            return State.Preview is { } running ? $"= {running}" : string.Empty;
         }
     }
 
@@ -179,6 +227,9 @@
             Toast.Show("Opened. Find it in Recents.");
         }
     }
+
+    private Task SetAngles(AngleMode angles) =>
+        Settings.UpdateAsync(s => s with { Angles = angles });
 
     private void CloseSheet() => sheet = SheetKind.None;
 
@@ -232,6 +283,7 @@
     public void Dispose()
     {
         State.Changed -= Repaint;
+        Settings.Changed -= Repaint;
         backHandler?.Dispose();
     }
 }

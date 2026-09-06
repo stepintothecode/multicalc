@@ -57,6 +57,26 @@ public sealed class HistoryImportTests
     }
 
     [Fact]
+    public void The_scientific_setting_survives_the_round_trip()
+    {
+        var session = CalculatorSession.Create("a", "Physics", At, scientific: true)
+            .WithResult(new CalculationEntry("sin(30)", "0.5", At), 0.5m);
+
+        var imported = HistoryImport.Parse(RoundTrip(session)).Calculators[0];
+
+        Assert.True(imported.Scientific);
+    }
+
+    [Fact]
+    public void A_calculator_exported_without_the_scientific_keys_comes_back_plain()
+    {
+        var session = CalculatorSession.Create("a", "Shopping", At)
+            .WithResult(new CalculationEntry("2+3", "5", At), 5m);
+
+        Assert.False(HistoryImport.Parse(RoundTrip(session)).Calculators[0].Scientific);
+    }
+
+    [Fact]
     public void Timestamps_survive_the_round_trip()
     {
         var session = CalculatorSession.Create("a", "Rent", At)

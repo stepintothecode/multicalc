@@ -15,10 +15,10 @@ namespace MultiCalc.App;
     MainLauncher = true,
     LaunchMode = LaunchMode.SingleTop,
 
-    // Portrait only. Six rows of keys plus the display cannot be sized usably across a
-    // landscape phone, and a clipped keypad is worse than not rotating. Landscape would
-    // need a two column layout, which is a separate piece of work.
-    ScreenOrientation = ScreenOrientation.Portrait,
+    // Rotation is allowed again now that landscape has a layout of its own: the two pads
+    // go side by side rather than trying to stack six rows into a third of the height.
+    // Orientation is in ConfigurationChanges below, so the activity is never recreated
+    // and nothing on the display is lost when the phone turns.
     ConfigurationChanges = ConfigChanges.ScreenSize
         | ConfigChanges.Orientation
         | ConfigChanges.UiMode

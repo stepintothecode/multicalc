@@ -65,4 +65,58 @@ public enum CalculatorKey
 
     /// <summary>Clears everything.</summary>
     Clear,
+
+    // Scientific keys. Everything below opens a function or drops in a constant, so the
+    // draft stays an ordinary infix string and the rewriter turns it into engine syntax.
+
+    /// <summary>Square root, opens "sqrt(".</summary>
+    SquareRoot,
+
+    /// <summary>Absolute value, opens "abs(".</summary>
+    AbsoluteValue,
+
+    /// <summary>Sine, opens "sin(" or "asin(" when inverse is on.</summary>
+    Sine,
+
+    /// <summary>Cosine.</summary>
+    Cosine,
+
+    /// <summary>Tangent.</summary>
+    Tangent,
+
+    /// <summary>Natural logarithm, opens "ln(".</summary>
+    NaturalLog,
+
+    /// <summary>Logarithm base ten, opens "log(".</summary>
+    Log10,
+
+    /// <summary>Reciprocal, opens "1/(".</summary>
+    Reciprocal,
+
+    /// <summary>Squares what came before it.</summary>
+    Square,
+
+    /// <summary>Raises what came before it to a power you then type.</summary>
+    Power,
+
+    /// <summary>e raised to a power, opens "exp(".</summary>
+    Exponential,
+
+    /// <summary>Ten raised to a power you then type. The partner to the log key.</summary>
+    PowerOfTen,
+
+    /// <summary>The constant pi.</summary>
+    Pi,
+
+    /// <summary>Euler's number.</summary>
+    Euler,
+
+    /// <summary>Inverse sine. The keypad sends this instead of <see cref="Sine"/> when Inv is on.</summary>
+    ArcSine,
+
+    /// <summary>Inverse cosine.</summary>
+    ArcCosine,
+
+    /// <summary>Inverse tangent.</summary>
+    ArcTangent,
 }

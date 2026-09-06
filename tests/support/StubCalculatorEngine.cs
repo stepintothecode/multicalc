@@ -17,9 +17,14 @@ public sealed class StubCalculatorEngine : ICalculatorEngine
     /// <summary>The last expression handed to the engine.</summary>
     public string? LastExpression { get; private set; }
 
-    public EvaluationOutcome Evaluate(string expression)
+    /// <summary>The angle mode the engine was asked for.</summary>
+    public AngleMode LastAngleMode { get; private set; }
+
+    public EvaluationOutcome Evaluate(string expression, AngleMode angles = AngleMode.Degrees)
     {
         LastExpression = expression;
+        LastAngleMode = angles;
+
         return outcome;
     }
 }

@@ -26,6 +26,9 @@ public sealed class CalculatorState
     private readonly ILogger<CalculatorState> logger;
 
     private CancellationTokenSource? pendingSave;
+    private string? previewOf;
+    private AngleMode previewAngles;
+    private string? preview;
 
     /// <summary>Creates the state. Nothing is read from storage until <see cref="InitialiseAsync"/>.</summary>
     public CalculatorState(
@@ -67,6 +70,41 @@ public sealed class CalculatorState
 
     /// <summary>The message under the display, or null when there is nothing wrong.</summary>
     public string? ErrorMessage { get; private set; }
+
+    /// <summary>
+    /// Counts finished calculations. The display uses it to know that an answer has just
+    /// landed, so it can play the same animation twice in a row when the answer is the same.
+    /// </summary>
+    public int ResultStamp { get; private set; }
+
+    /// <summary>
+    /// The running answer for the active calculator, or null when there is nothing worth
+    /// showing yet. Waiting for equals to find out what "18*7.5" comes to is most of the
+    /// waiting a calculator ever asks anyone to do.
+    /// </summary>
+    /// <remarks>
+    /// Worked out on demand and remembered, rather than recomputed on every render: the
+    /// answer only changes when the expression or the angle unit does.
+    /// </remarks>
+    public string? Preview
+    {
+        get
+        {
+            var expression = Active.Draft.Expression;
+            var angles = settings.Current.Angles;
+
+            if (previewOf == expression && previewAngles == angles)
+            {
+                return preview;
+            }
+
+            previewOf = expression;
+            previewAngles = angles;
+            preview = calculator.Preview(Active.Draft, angles);
+
+            return preview;
+        }
+    }
 
     /// <summary>Restores the saved calculators and probes the device calculator.</summary>
     public async Task InitialiseAsync(CancellationToken cancellationToken = default)
@@ -110,6 +148,43 @@ public sealed class CalculatorState
     }
 
     /// <summary>
+    /// Takes an edit made in the display itself: a paste, a deleted selection, a hardware
+    /// keyboard. The text arrives as the display writes it, separators and all.
+    /// </summary>
+    /// <param name="text">What the display now reads.</param>
+    /// <param name="caret">Where the caret sits in that text.</param>
+    public void Edit(string text, int caret)
+    {
+        ErrorMessage = null;
+
+        var (expression, at) = ExpressionDisplay.FromDisplay(text, caret);
+
+        if (expression == Active.Draft.Expression)
+        {
+            // Only the caret moved, or the edit was entirely characters we drop. Either way
+            // there is nothing to save and nothing to redraw beyond the caret.
+            MoveCaret(caret);
+            return;
+        }
+
+        Update(Active.WithDraft(ExpressionDraft.FromEdit(expression, at)));
+    }
+
+    /// <summary>
+    /// Moves the caret to a place in the displayed text. Nothing is saved: where the caret
+    /// sits is not worth a write, and it does not survive closing the app.
+    /// </summary>
+    public void MoveCaret(int displayOffset)
+    {
+        var moved = Active.Draft.WithCaret(Active.Draft.Display.RawIndex(displayOffset));
+
+        if (!ReferenceEquals(moved, Active.Draft))
+        {
+            Book = Book.Replace(Active.WithDraft(moved));
+        }
+    }
+
+    /// <summary>
     /// Works out what is typed. A failure leaves the expression alone so it can be corrected,
     /// rather than clearing the display and losing the typing.
     /// </summary>
@@ -117,7 +192,7 @@ public sealed class CalculatorState
     {
         Buzz();
 
-        var outcome = calculator.Evaluate(Active.Draft);
+        var outcome = calculator.Evaluate(Active.Draft, settings.Current.Angles);
 
         if (!outcome.IsSuccess)
         {
@@ -127,6 +202,7 @@ public sealed class CalculatorState
         }
 
         ErrorMessage = null;
+        ResultStamp++;
 
         var entry = new CalculationEntry(
             Active.Draft.ToDisplay(),
@@ -236,6 +312,21 @@ public sealed class CalculatorState
 
         Buzz();
         Book = Book.Replace(session.WithTint(tint));
+        Persist(immediate: true);
+    }
+
+    /// <summary>Shows or hides the scientific keys on one calculator.</summary>
+    public void ToggleScientific(string id)
+    {
+        var session = Book.Sessions.FirstOrDefault(s => s.Id == id);
+
+        if (session is null)
+        {
+            return;
+        }
+
+        Buzz();
+        Book = Book.Replace(session.WithScientific(!session.Scientific));
         Persist(immediate: true);
     }
 
@@ -372,7 +463,10 @@ public sealed class CalculatorState
             Book = Book.AddNew(id, clock.UtcNow);
 
             var added = Book.Sessions.First(s => s.Id == id);
-            var restored = added.Rename(imported.Name).WithHistory(imported.Entries);
+            var restored = added
+                .Rename(imported.Name)
+                .WithHistory(imported.Entries)
+                .WithScientific(imported.Scientific);
 
             // A file that carried colours restores them; an older one keeps the colour the
             // new calculator was just handed.

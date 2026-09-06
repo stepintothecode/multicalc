@@ -68,6 +68,32 @@ public sealed class CalculatorSessionTests
     }
 
     [Fact]
+    public void The_scientific_keys_are_a_property_of_one_calculator_not_the_app()
+    {
+        var plain = New();
+        var science = plain.WithScientific(true);
+
+        Assert.False(plain.Scientific);
+        Assert.True(science.Scientific);
+    }
+
+    [Fact]
+    public void Turning_the_scientific_keys_on_leaves_everything_else_alone()
+    {
+        var session = New()
+            .Rename("Physics")
+            .WithTint(CalculatorTint.FromHue(200))
+            .WithResult(new CalculationEntry("2+3", "5", At), 5m)
+            .WithScientific(true);
+
+        Assert.True(session.Scientific);
+        Assert.Equal("Physics", session.Name);
+        Assert.Equal(200, session.Tint.Hue);
+        Assert.Single(session.History);
+        Assert.Equal("5", session.Draft.Expression);
+    }
+
+    [Fact]
     public void Renaming_trims_and_ignores_blanks()
     {
         Assert.Equal("Groceries", New().Rename("  Groceries  ").Name);

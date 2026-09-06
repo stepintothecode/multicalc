@@ -108,9 +108,11 @@ public static class HistoryExport
                 writer.WriteStartObject();
                 writer.WriteString("name", session.Name);
 
-                // The tag colour travels with the calculator, so an export restores what
-                // the person actually had rather than a list of grey strangers.
+                // The colour and the scientific setting travel with the calculator, so an
+                // export restores what the person actually had rather than a list of grey
+                // strangers that all forgot their keypad.
                 writer.WriteNumber("hue", session.Tint.Hue);
+                writer.WriteBoolean("scientific", session.Scientific);
                 writer.WriteString("createdAt", session.CreatedAt);
                 writer.WriteStartArray("entries");
 

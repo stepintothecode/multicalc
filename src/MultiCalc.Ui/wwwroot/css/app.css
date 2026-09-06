@@ -200,12 +200,19 @@ a { color: var(--accent); text-underline-offset: 2px; }
 
 .icon-btn:active { background: var(--surface-2); }
 .icon-btn .ic { width: 21px; height: 21px; }
+.icon-btn.is-on { background: var(--accent-soft); }
+.icon-btn.is-on .ic { color: var(--accent); }
 
 /* ---------- display ---------- */
 
 .stage {
   flex: 1 1 auto;
-  min-height: 0;
+
+  /* The scientific pad takes four more rows, and without a floor the display is the
+     thing that gives way until the number has nowhere to sit. min-content is exactly the
+     expression plus the answer underneath it: a fixed floor was tried and was too short on
+     a phone with larger text, which clipped the answer behind the two buttons below. */
+  min-height: min-content;
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -236,6 +243,33 @@ a { color: var(--accent); text-underline-offset: 2px; }
 .expression::-webkit-scrollbar { display: none; }
 .expression-inner { direction: ltr; display: inline-block; }
 .expression.is-placeholder { color: var(--text-dim); }
+
+/* Editable, so the caret can go anywhere in the expression and the text can be selected
+   and copied. The keypad is the keyboard, so the outline a focused field normally gets
+   would be noise: the caret is enough to say where typing will land. */
+.expression {
+  caret-color: var(--accent);
+  outline: none;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+.expression::selection,
+.expression *::selection { background: var(--accent-soft); color: var(--text); }
+
+/* The answer arrives from where it was being previewed and grows into place, which shows
+   that the running total and the answer are the same number rather than two. */
+@keyframes answer-lands {
+  from { transform: translateY(0.62em) scale(.38); opacity: .5; }
+  to { transform: none; opacity: 1; }
+}
+
+.expression.lands {
+  animation: answer-lands 280ms cubic-bezier(.22, .68, .3, 1);
+
+  /* The display is right aligned, and so was the line the answer came from. */
+  transform-origin: 100% 50%;
+}
 
 .result {
   flex: none;
@@ -317,10 +351,32 @@ a { color: var(--accent); text-underline-offset: 2px; }
 .newbtn-phone .ic { color: var(--text-dim); }
 .newbtn-phone:active { background: var(--surface-2); }
 
-/* Disabled rather than hidden: the note says why, so the phone's limitation is visible
-   instead of silently missing. */
-.newbtn.is-off { opacity: .45; }
+/* Shown rather than hidden: the note says why, so the phone's limitation is visible
+   instead of silently missing. The dimming is on the parts that are unavailable, not on
+   the whole row, or it would take the one thing here that still works down with it. */
+.newbtn.is-off .ic,
+.newbtn.is-off .newbtn-text { opacity: .45; }
+.newbtn.is-off:active { transform: none; background: transparent; }
 .newbtn:disabled:active { transform: none; background: transparent; }
+
+.newbtn-info {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  margin-left: auto;
+  border-radius: 50%;
+  border: 1.5px solid var(--line);
+  color: var(--text-dim);
+  font-size: 14px;
+  font-weight: 700;
+  font-style: italic;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+  transition: background var(--tap), color var(--tap);
+}
+
+.newbtn-info:active { background: var(--surface-2); color: var(--text); }
 
 .btn {
   display: inline-flex;
@@ -353,42 +409,148 @@ a { color: var(--accent); text-underline-offset: 2px; }
 
 /* Round keys with real space between them. A circle that stops short of its cell gives
    every key a moat, so a thumb landing slightly off still hits the one it aimed at.
-   The diameter is whichever is smaller, the width four keys can share or a slice of the
-   screen height, so the keys stay circular instead of stretching on an odd screen. */
-.keypad {
+
+   The diameter is the smallest of what four keys can share across the width, what six rows
+   can share of the height left over after the rest of the screen, and a ceiling so a tablet
+   does not get saucers. Width alone was tried first: on a short screen the keypad then grew
+   past the bottom and squeezed the display until the answer was clipped behind these keys. */
+.pads {
   --pad: 14px;
   --gap: 11px;
-  --key-size: min(calc((100vw - 2 * var(--pad) - 3 * var(--gap)) / 4), 10.5vh);
+  --chrome: 280px;
+  /* The floor matters: sideways, the height term goes negative, and a negative length
+     would throw away every size derived from this. */
+  --key-size: max(30px, min(
+    calc((100vw - 2 * var(--pad) - 3 * var(--gap)) / 4),
+    calc((100vh - var(--chrome)) / 6),
+    76px));
 
-  flex: none;
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-
-  /* Five rows of circles, then a shorter one for equals: a full circle's height of solid
-     colour across the whole width is a slab, not a key. */
-  grid-template-rows: repeat(5, var(--key-size)) calc(var(--key-size) * 0.74);
+  /* Shrinkable, and the rows below are shrinkable with it, so an unusual screen costs a
+     few pixels off every key rather than hiding the bottom row. */
+  flex: 0 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
   gap: var(--gap);
   padding: 0 var(--pad) 12px;
-  justify-items: center;
 
   /* The keypad owns the gesture: without this the browser starts scrolling as soon as
      the finger slides, and the slide-to-press never gets its moves. */
   touch-action: none;
 }
 
+.sci-pad,
+.num-pad {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--gap);
+  justify-items: center;
+  min-height: 0;
+}
+
+/* minmax rather than a flat size: the rows want to be a key tall and will settle for less
+   rather than push the last row off the screen. */
+.sci-pad { grid-auto-rows: minmax(0, var(--key-size)); }
+
+/* Five rows of circles, then a shorter one for equals: a full circle's height of solid
+   colour across the whole width is a slab, not a key. */
+.num-pad {
+  grid-template-rows: repeat(5, minmax(0, var(--key-size))) minmax(0, calc(var(--key-size) * 0.74));
+}
+
+/* The scientific keys are per calculator, so this is a class on the pads rather than a
+   media query. Landscape gets its own arrangement further down, and honours the same
+   toggle: showing keys someone turned off would be its own kind of wrong. */
+.sci-pad { display: none; }
+.pads.is-sci .sci-pad { display: grid; }
+
+/* With four more rows of keys the display gives up some size, but it still has to show
+   an expression and its answer underneath. Smaller type, not less room. */
+.app.is-sci .stage { padding-top: 8px; padding-bottom: 8px; }
+.app.is-sci .expression { font-size: clamp(26px, 8vw, 40px); }
+.app.is-sci .result { height: 22px; font-size: 15px; margin-top: 6px; }
+
+/* Ten rows of circles do not fit a phone, so the scientific layout switches to pills.
+   Samsung's does the same thing, and for the same reason.
+
+   The rows divide whatever height is left rather than being a fraction of the screen.
+   A vh guess was tried first and pushed the equals bar under the navigation bar, because
+   the guess cannot know how tall the display and the buttons above it ended up. */
+.pads.is-sci {
+  --gap: 8px;
+
+  /* Basis zero, so this is exactly the room left over rather than a share of it: the keys
+     get everything the display and the buttons above them did not take. */
+  flex: 1 1 0;
+  min-height: 0;
+}
+
+/* The display takes what it needs and no more, or it would split the leftover space with
+   the keypad and leave a band of nothing above the expression. */
+.app.is-sci .stage { flex: 0 1 auto; }
+
+.pads.is-sci .sci-pad,
+.pads.is-sci .num-pad { min-height: 0; }
+
+/* Four rows against five and a shorter equals, so every key ends up the same height.
+   minmax(0, 1fr) rather than 1fr: a plain fr will not shrink a row below the key inside it,
+   which is what made the last rows pile up on top of each other. */
+.pads.is-sci .sci-pad {
+  flex: 4 1 0;
+  grid-template-rows: repeat(4, minmax(0, 1fr));
+  grid-auto-rows: unset;
+}
+
+.pads.is-sci .num-pad {
+  flex: 5.9 1 0;
+  grid-template-rows: repeat(5, minmax(0, 1fr)) minmax(0, 0.9fr);
+}
+
+.pads.is-sci .key {
+  width: 100%;
+  height: 100%;
+  aspect-ratio: auto;
+  border-radius: 999px;
+  font-size: clamp(15px, 2.7vh, 26px);
+}
+
+.pads.is-sci .sci-pad .key { font-size: clamp(12px, 2.1vh, 20px); }
+.pads.is-sci .key-mode { font-size: clamp(10px, 1.7vh, 15px) !important; }
+.pads.is-sci .key .ic { width: clamp(14px, 2.4vh, 22px); height: clamp(14px, 2.4vh, 22px); }
+
+.key-blank { display: block; }
+
+/* Height comes from the row and the width follows it, so a key that has to give up space
+   stays a circle instead of flattening into an oval. */
 .key {
-  width: var(--key-size);
-  height: var(--key-size);
+  height: 100%;
+  width: auto;
+  aspect-ratio: 1;
+  max-width: 100%;
   display: grid;
   place-items: center;
   border-radius: 50%;
   background: var(--key);
   box-shadow: var(--shadow-key);
-  font-size: calc(var(--key-size) * 0.36);
+  font-size: min(calc(var(--key-size) * 0.36), 4.6vh);
   font-weight: 400;
   font-variant-numeric: tabular-nums;
   transition: transform var(--tap), background var(--tap);
 }
+
+/* Scientific keys carry words, not digits, so they need to be smaller to fit. */
+.sci-pad .key { font-size: calc(var(--key-size) * 0.27); font-weight: 500; }
+.sci-pad .key sup { font-size: 0.66em; vertical-align: super; line-height: 0; }
+
+.key-mode {
+  background: var(--surface-2);
+  color: var(--text-dim);
+  font-size: calc(var(--key-size) * 0.22) !important;
+  font-weight: 700 !important;
+  letter-spacing: .04em;
+}
+
+.key-mode.is-on { background: var(--accent-soft); color: var(--accent); }
 
 /* is-down comes from keypad.js. The pointer is captured on the keypad, so :active never
    lands on the key the finger is actually over. */
@@ -410,8 +572,106 @@ a { color: var(--accent); text-underline-offset: 2px; }
   grid-column: 1 / -1;
   width: 100%;
   height: 100%;
+  aspect-ratio: auto;
   border-radius: 999px;
-  font-size: calc(var(--key-size) * 0.3);
+  font-size: min(calc(var(--key-size) * 0.3), 3.8vh);
+}
+
+/* ---------- landscape ----------
+   A phone on its side has about a third of the height and twice the width, so the same
+   column would put the keys off the bottom. The two pads go side by side instead, which
+   is also where a scientific calculator naturally wants them. The scientific pad still
+   answers to its own toggle rather than being forced on. */
+
+@media (orientation: landscape) and (max-height: 560px) {
+
+  /* The top bar and the two New buttons share the first row: sideways there is width to
+     spare and height to save, and stacking them costs a whole row the keys need. */
+  .app {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto auto 1fr;
+    column-gap: 10px;
+  }
+
+  .topbar { grid-area: 1 / 1 / 2 / 2; }
+  .newrow { grid-area: 1 / 2 / 2 / 3; padding: 8px 12px 8px 0; align-items: center; }
+  .stage { grid-area: 2 / 1 / 3 / 3; }
+  .pads { grid-area: 3 / 1 / 4 / 3; }
+
+  .newbtn { padding: 8px 12px; }
+  .newbtn-note { display: none; }
+
+  .app .stage,
+  .app.is-sci .stage {
+    min-height: 0;
+    padding: 0 22px 4px;
+  }
+
+  .app .expression,
+  .app.is-sci .expression { font-size: clamp(24px, 4.4vw, 36px); }
+
+  .app .result,
+  .app.is-sci .result { height: 20px; font-size: 14px; margin-top: 2px; }
+
+  /* Short wide pills, not circles. Six rows of circles cannot fit a third of the height,
+     which is what made this look scattered before.
+
+     The rows split the height the grid actually hands them, so the keys are as big as the
+     screen allows. A fixed pill height left a band of dead space under the keypad, because
+     it could not know how much room the row above had left. */
+  .pads,
+  .pads.is-sci {
+    --gap: 7px;
+
+    flex: 1 1 auto;
+    flex-direction: row;
+    align-items: stretch;
+    gap: 18px;
+    min-height: 0;
+    padding-bottom: 10px;
+  }
+
+  .pads .key,
+  .pads.is-sci .key {
+    width: 100%;
+    height: 100%;
+    aspect-ratio: auto;
+    border-radius: 999px;
+    font-size: clamp(15px, 5.2vh, 30px);
+  }
+
+  /* Six rows for sixteen keys: they fill four of them and leave the last two empty, which
+     lands every scientific key on the same height as the digit beside it.
+
+     Written to match the specificity of the portrait scientific rules above, which would
+     otherwise win here and stretch four scientific rows over the whole height. */
+  .pads .sci-pad,
+  .pads.is-sci .sci-pad {
+    flex: 1 1 0;
+    grid-template-rows: repeat(6, minmax(0, 1fr));
+    grid-auto-rows: unset;
+  }
+
+  .pads .num-pad,
+  .pads.is-sci .num-pad {
+    flex: 1 1 0;
+    grid-template-rows: repeat(5, minmax(0, 1fr)) minmax(0, 0.9fr);
+  }
+
+  .pads .sci-pad .key,
+  .pads.is-sci .sci-pad .key { font-size: clamp(12px, 4.2vh, 24px); }
+  .pads .key-mode,
+  .pads.is-sci .key-mode { font-size: clamp(11px, 3.4vh, 19px) !important; }
+  .pads .key .ic,
+  .pads.is-sci .key .ic { width: clamp(16px, 4.8vh, 26px); height: clamp(16px, 4.8vh, 26px); }
+
+  .sci-pad,
+  .num-pad { min-width: 0; min-height: 0; }
+
+  /* With the scientific pad hidden the numbers keep the middle rather than hugging one
+     edge, which would look like a bug rather than a choice. */
+  .pads:not(.is-sci) .num-pad { margin: 0 auto; max-width: 62vw; }
 }
 
 /* ---------- sheets ---------- */

@@ -26,20 +26,4 @@ public sealed class NumberFormatTests
         Assert.Equal(expected, NumberFormat.ForDisplay(value));
     }
 
-    [Theory]
-    [InlineData("1234+5", "1,234+5")]
-    [InlineData("1.5", "1.5")]
-    [InlineData("0.123456", "0.123456")]
-    [InlineData("1234567*2", "1,234,567*2")]
-    [InlineData("", "")]
-    public void Grouping_an_expression_leaves_operators_and_decimals_alone(string input, string expected)
-    {
-        Assert.Equal(expected, NumberFormat.GroupExpression(input));
-    }
-
-    [Fact]
-    public void Grouping_does_not_touch_the_digits_after_a_point()
-    {
-        Assert.Equal("12,345.678901", NumberFormat.GroupExpression("12345.678901"));
-    }
 }

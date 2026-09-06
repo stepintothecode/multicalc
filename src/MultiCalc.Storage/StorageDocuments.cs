@@ -26,6 +26,8 @@ internal sealed class SessionRecord
 
     public int? Hue { get; set; }
 
+    public bool Scientific { get; set; }
+
     /// <summary>
     /// The old named colour, kept only so a file written before the picker still opens
     /// with the colour its owner chose. Never written any more.
@@ -60,6 +62,8 @@ internal sealed class SettingsDocument
     public string Theme { get; set; } = string.Empty;
 
     public bool HapticFeedback { get; set; } = true;
+
+    public string Angles { get; set; } = string.Empty;
 }
 
 /// <summary>

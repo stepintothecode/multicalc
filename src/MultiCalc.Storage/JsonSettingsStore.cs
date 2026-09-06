@@ -35,6 +35,7 @@ public sealed class JsonSettingsStore : ISettingsStore
             {
                 Theme = Parse(document.Theme, AppSettings.Default.Theme),
                 HapticFeedback = document.HapticFeedback,
+                Angles = Parse(document.Angles, AppSettings.Default.Angles),
             };
         }
         catch (Exception ex) when (ex is IOException or JsonException or UnauthorizedAccessException)
@@ -50,6 +51,7 @@ public sealed class JsonSettingsStore : ISettingsStore
         {
             Theme = settings.Theme.ToString(),
             HapticFeedback = settings.HapticFeedback,
+            Angles = settings.Angles.ToString(),
         };
 
         var json = JsonSerializer.Serialize(document, StorageJsonContext.Default.SettingsDocument);

@@ -10,7 +10,10 @@
     <ApplicationTitle>MultiCalc</ApplicationTitle>
     <ApplicationId>com.stepintothecode.multicalc</ApplicationId>
     <ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
-    <ApplicationVersion>1</ApplicationVersion>
+
+    <!-- Play refuses a bundle whose version code is not higher than the last one uploaded.
+         Raise this on every upload, including one that only fixes the build. -->
+    <ApplicationVersion>2</ApplicationVersion>
 
     <!-- Android 8.0 and up, which is all but a rounding error of phones in use. -->
     <SupportedOSPlatformVersion>26.0</SupportedOSPlatformVersion>
@@ -19,6 +22,12 @@
          targets the device that is plugged in, so the ABIs in a Debug APK say nothing
          about reach: 32 bit ARM is still out there on the older end of minSdk 26. -->
     <RuntimeIdentifiers Condition="'$(Configuration)' == 'Release'">android-arm;android-arm64;android-x64</RuntimeIdentifiers>
+
+    <!-- Shrink the Java side with R8. Off by default in .NET Android, which is why Play
+         warned that the bundle carried no deobfuscation file. Turning it on produces
+         mapping.txt and the SDK puts that inside the bundle itself, so Play reads it
+         without anything being uploaded by hand. It also makes the app smaller. -->
+    <AndroidLinkTool Condition="'$(Configuration)' == 'Release'">r8</AndroidLinkTool>
 
     <!-- App wiring rather than a library, so the repo-wide docs requirement is off here. -->
     <GenerateDocumentationFile>false</GenerateDocumentationFile>

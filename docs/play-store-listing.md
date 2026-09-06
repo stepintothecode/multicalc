@@ -284,10 +284,61 @@ a phone once before you upload it, not just the Debug one.
 Both live in `src/MultiCalc.App/MultiCalc.App.csproj`:
 
 - `ApplicationDisplayVersion` is the version people see, currently `1.0`
-- `ApplicationVersion` is the integer build number, currently `1`
+- `ApplicationVersion` is the integer build number, currently `2`
 
 Play refuses a bundle whose `ApplicationVersion` is not higher than the last one you
 uploaded. Raise it every single time, even for a rejected upload.
+
+---
+
+## The two Play Console warnings
+
+Both are advisory. Neither blocks publishing; they affect how readable a crash report is
+once people are using the app.
+
+### "There is no deobfuscation file associated with this App Bundle"
+
+**Fixed in the project, nothing to change in your command.**
+
+`AndroidLinkTool` is blank by default in .NET Android, which means R8 never runs, no
+`mapping.txt` is produced, and the bundle carries no deobfuscation file. The csproj now
+sets it for Release:
+
+```xml
+<AndroidLinkTool Condition="'$(Configuration)' == 'Release'">r8</AndroidLinkTool>
+```
+
+The SDK then writes `mapping.txt` next to the bundle **and puts a copy inside it** at
+`BUNDLE-METADATA/com.android.tools.build.obfuscation/proguard.map`. Play reads it from
+there, so there is nothing to upload by hand. Verified present in the bundle.
+
+**Test this build on a phone before uploading it.** R8 strips Java classes it cannot see
+being used, and anything reached only through reflection or JNI can disappear in a way
+that no compiler warning catches. Install the Release APK from the publish folder, open
+the app, do a sum, add a calculator, and try an export. If something breaks, the escape
+hatch is to drop that one line from the csproj and accept the warning.
+
+### "This App Bundle contains native code, and you've not uploaded debug symbols"
+
+**No fix. Leave this one.**
+
+There is no supported way to do this in .NET Android today.
+[dotnet/android#8903](https://github.com/dotnet/android/issues/8903) asks for exactly
+this and is still open and unimplemented. The stripped `.so` files in the bundle come
+from the .NET runtime packs, and the unstripped originals are not shipped anywhere you
+can point Play at.
+
+Two things make this a comfortable warning to live with:
+
+- The native code is not yours. It is `libmonodroid.so`, `libmonosgen-2.0.so` and
+  `libSystem.Native.so`, the .NET Android runtime. A crash inside those is a runtime bug
+  rather than something a symbol file would help you fix.
+- Your own code is C#. It appears in crash reports as managed stack traces, which do not
+  need native symbols.
+
+`AndroidPreferNativeLibrariesWithDebugSymbols=true` exists and would ship unstripped
+libraries, which does silence it, at the cost of a much larger download for every user.
+Not a trade worth making for a calculator.
 
 ---
 
@@ -311,7 +362,7 @@ No account, no ads, no internet permission. Everything stays on your phone.
 ## 6. Before you press publish
 
 - [ ] `https://stepintothecode.github.io/multicalc/privacy/` opens in a browser
-- [ ] Release bundle installed and opened on a real phone, not just the Debug build
+- [ ] **The R8 Release build opened and worked on a real phone**, not just the Debug build
 - [ ] `ApplicationVersion` raised
 - [ ] Upload keystore backed up somewhere you will not lose it
 - [ ] App name checked against Play search for a collision

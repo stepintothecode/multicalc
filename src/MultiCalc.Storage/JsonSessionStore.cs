@@ -70,7 +70,8 @@ public sealed class JsonSessionStore : ISessionStore
             record.LastResult,
             [.. record.History.Select(e => new CalculationEntry(e.Expression, e.Result, e.At))],
             record.CreatedAt,
-            TintOf(record));
+            TintOf(record),
+            record.Scientific);
 
     /// <summary>
     /// The stored hue, or the named colour a file from before the picker would carry, or
@@ -102,6 +103,7 @@ public sealed class JsonSessionStore : ISessionStore
         Id = session.Id,
         Name = session.Name,
         Hue = session.Tint.Hue,
+        Scientific = session.Scientific,
         Expression = session.Draft.Expression,
         LastResult = session.LastResult,
         CreatedAt = session.CreatedAt,

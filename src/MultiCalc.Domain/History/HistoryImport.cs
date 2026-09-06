@@ -7,10 +7,12 @@ namespace MultiCalc.Domain.History;
 /// <param name="Name">What the calculator was called when it was exported.</param>
 /// <param name="Entries">Its calculations, newest first.</param>
 /// <param name="Tint">The colour it was tagged with, or null if the file predates colours.</param>
+/// <param name="Scientific">Whether it had the scientific keys showing.</param>
 public sealed record ImportedCalculator(
     string Name,
     IReadOnlyList<CalculationEntry> Entries,
-    CalculatorTint? Tint = null);
+    CalculatorTint? Tint = null,
+    bool Scientific = false);
 
 /// <summary>What came of reading an export file.</summary>
 /// <param name="Calculators">What was found. Empty when it failed.</param>
@@ -66,7 +68,11 @@ public static class HistoryImport
 
                 if (entries.Count > 0)
                 {
-                    imported.Add(new ImportedCalculator(name, entries, ReadTint(calculator)));
+                    imported.Add(new ImportedCalculator(
+                        name,
+                        entries,
+                        ReadTint(calculator),
+                        ReadBool(calculator, "scientific")));
                 }
             }
 
@@ -113,6 +119,9 @@ public static class HistoryImport
         && value.TryGetInt32(out var hue)
             ? CalculatorTint.FromHue(hue)
             : null;
+
+    private static bool ReadBool(JsonElement element, string property) =>
+        element.TryGetProperty(property, out var value) && value.ValueKind == JsonValueKind.True;
 
     private static string? ReadString(JsonElement element, string property) =>
         element.TryGetProperty(property, out var value) && value.ValueKind == JsonValueKind.String

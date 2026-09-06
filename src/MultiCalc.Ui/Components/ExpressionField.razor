@@ -1,0 +1,164 @@
+@implements IDisposable
+@inject IJSRuntime JS
+
+@* The display, which is editable.
+
+   A caret can go anywhere in it, the text can be selected and copied, and a paste is read
+   back as an expression. The keypad still does the typing: inputmode and
+   virtualkeyboardpolicy keep the system keyboard away, because a calculator that pops a
+   QWERTY over its own keys would be absurd.
+
+   Blazor renders the element and never anything inside it. The browser rewrites the
+   contents of an editable element as it pleases: cutting the last character deletes the
+   element the text was in, and Blazor's next update then has nothing to update and takes
+   the whole page down with it. So the text goes in through expression.js, which is also
+   what puts the caret back afterwards. *@
+
+@if (editable)
+{
+    <div class="expression @(Draft.IsEmpty ? "is-placeholder" : string.Empty)"
+         contenteditable="true"
+         inputmode="none"
+         virtualkeyboardpolicy="manual"
+         spellcheck="false"
+         autocorrect="off"
+         autocapitalize="off"
+         role="textbox"
+         aria-label="Expression"
+         @onpointerdown:stopPropagation="true"
+         @ref="field"></div>
+}
+else
+{
+    @* Without the script there is no caret to place and no text to put back, so the display
+       goes back to being something Blazor draws and nothing writes into. *@
+    <div class="expression @(Draft.IsEmpty ? "is-placeholder" : string.Empty)">
+        <span class="expression-inner" dir="ltr">@Text</span>
+    </div>
+}
+
+@code {
+    private ElementReference field;
+    private DotNetObjectReference<ExpressionField>? self;
+    private bool editable = true;
+    private bool attached;
+
+    private string? drawnText;
+    private int drawnCaret = -1;
+    private int drawnStamp;
+    private bool forced;
+
+    /// <summary>What is currently typed.</summary>
+    [Parameter, EditorRequired]
+    public ExpressionDraft Draft { get; set; } = ExpressionDraft.Empty;
+
+    /// <summary>Raised when the display itself was edited: a paste, a deletion, a hardware key.</summary>
+    [Parameter, EditorRequired]
+    public EventCallback<DisplayEdit> OnEdit { get; set; }
+
+    /// <summary>Raised when the caret was moved within the displayed text.</summary>
+    [Parameter, EditorRequired]
+    public EventCallback<int> OnCaret { get; set; }
+
+    /// <summary>Raised when a hardware keyboard's Enter key is pressed.</summary>
+    [Parameter]
+    public EventCallback OnEnter { get; set; }
+
+    /// <summary>Changes whenever an answer lands, which is what replays the animation.</summary>
+    [Parameter]
+    public int Stamp { get; set; }
+
+    /// <summary>Whether an answer has just landed and should be animated into place.</summary>
+    [Parameter]
+    public bool Landed { get; set; }
+
+    private ExpressionDisplay Display => Draft.Display;
+
+    /// <summary>A blank display still needs something to show and somewhere to put a caret.</summary>
+    private string Text => Draft.IsEmpty ? "0" : Display.Text;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            self = DotNetObjectReference.Create(this);
+
+            try
+            {
+                await JS.InvokeVoidAsync("multicalcExpression.attach", field, self);
+                attached = true;
+            }
+            catch (JSException)
+            {
+                // The script writes the text as well as the caret, so without it the display
+                // has to go back to being plain, readable and not editable.
+                attached = false;
+                editable = false;
+                StateHasChanged();
+
+                return;
+            }
+        }
+
+        if (!attached)
+        {
+            return;
+        }
+
+        var text = Text;
+        var caret = Display.DisplayOffset(Draft.Caret);
+        var landed = Landed && Stamp != drawnStamp;
+
+        // After an edit the browser is showing its own idea of the text, which may include
+        // characters an expression cannot hold, so the model is written back either way.
+        if (!forced && text == drawnText && caret == drawnCaret && Stamp == drawnStamp)
+        {
+            return;
+        }
+
+        forced = false;
+        drawnText = text;
+        drawnCaret = caret;
+        drawnStamp = Stamp;
+
+        try
+        {
+            await JS.InvokeVoidAsync("multicalcExpression.render", field, text, caret, landed);
+        }
+        catch (JSException)
+        {
+            // The display is mid teardown. Nothing to do and nothing to say.
+        }
+    }
+
+    /// <summary>Called from expression.js when the text in the display changed.</summary>
+    [JSInvokable]
+    public Task Edited(string text, int caret)
+    {
+        forced = true;
+
+        return InvokeAsync(async () =>
+        {
+            await OnEdit.InvokeAsync(new DisplayEdit(text, caret));
+
+            // An edit the model shrugs off still has to be redrawn, because the browser has
+            // already put it on screen.
+            StateHasChanged();
+        });
+    }
+
+    /// <summary>Called from expression.js when the caret moved without the text changing.</summary>
+    [JSInvokable]
+    public Task CaretMoved(int caret)
+    {
+        drawnCaret = caret;
+
+        return InvokeAsync(() => OnCaret.InvokeAsync(caret));
+    }
+
+    /// <summary>Called from expression.js when a hardware keyboard's Enter key is pressed.</summary>
+    [JSInvokable]
+    public Task EnterPressed() => InvokeAsync(() => OnEnter.InvokeAsync());
+
+    public void Dispose() => self?.Dispose();
+}

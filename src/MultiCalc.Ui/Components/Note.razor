@@ -1,0 +1,30 @@
+@* A small centred note, for explaining one thing in a sentence or two. A whole sheet
+   would be more furniture than a short explanation deserves. *@
+
+<div class="scrim" @onclick="Close"></div>
+
+<div class="note" role="dialog" aria-modal="true" aria-label="@Title">
+    <div class="note-title">@Title</div>
+
+    <div class="note-body">
+        @ChildContent
+    </div>
+
+    <button class="btn btn-block" @onclick="Close">Close</button>
+</div>
+
+@code {
+    /// <summary>Heading shown at the top of the note.</summary>
+    [Parameter, EditorRequired]
+    public string Title { get; set; } = string.Empty;
+
+    /// <summary>What the note says.</summary>
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>Raised when the note should close.</summary>
+    [Parameter]
+    public EventCallback OnClose { get; set; }
+
+    private Task Close() => OnClose.InvokeAsync();
+}
